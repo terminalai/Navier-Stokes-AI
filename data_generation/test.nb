@@ -10,10 +10,10 @@
 NotebookFileLineBreakTest
 NotebookFileLineBreakTest
 NotebookDataPosition[       158,          7]
-NotebookDataLength[    655410,      10988]
-NotebookOptionsPosition[    653951,      10956]
-NotebookOutlinePosition[    654357,      10972]
-CellTagsIndexPosition[    654314,      10969]
+NotebookDataLength[    655027,      10983]
+NotebookOptionsPosition[    653282,      10948]
+NotebookOutlinePosition[    653688,      10964]
+CellTagsIndexPosition[    653645,      10961]
 WindowFrame->Normal*)
 
 (* Beginning of Notebook Content *)
@@ -322,52 +322,44 @@ Cell[BoxData[
   "In[155]:=",ExpressionUUID->"390e8690-6b28-40b9-b797-e5f66835f3bc"],
 
 Cell[BoxData[
- TagBox[
-  StyleBox[
-   DynamicModuleBox[{$CellContext`j$$ = 100, Typeset`show$$ = True, 
-    Typeset`bookmarkList$$ = {}, Typeset`bookmarkMode$$ = "Menu", 
-    Typeset`animator$$, Typeset`animvar$$ = 1, Typeset`name$$ = 
-    "\"untitled\"", Typeset`specs$$ = {{
-      Hold[$CellContext`j$$], 1, 100, 1}}, Typeset`size$$ = {
-    360., {107., 112.3002526508813}}, Typeset`update$$ = 0, 
-    Typeset`initDone$$, Typeset`skipInitDone$$ = True}, 
-    DynamicBox[Manipulate`ManipulateBoxes[
-     1, StandardForm, "Variables" :> {$CellContext`j$$ = 1}, 
-      "ControllerVariables" :> {}, 
-      "OtherVariables" :> {
-       Typeset`show$$, Typeset`bookmarkList$$, Typeset`bookmarkMode$$, 
-        Typeset`animator$$, Typeset`animvar$$, Typeset`name$$, 
-        Typeset`specs$$, Typeset`size$$, Typeset`update$$, Typeset`initDone$$,
-         Typeset`skipInitDone$$}, "Body" :> ($CellContext`u = Total[
-           Table[Part[
-              Part[$CellContext`solution, $CellContext`j$$], $CellContext`i] 
-            Sin[$CellContext`i $CellContext`x], {$CellContext`i, 1, 
-             Subscript[$CellContext`k, $CellContext`max]}]] + Total[
-           Table[Part[
-              Part[$CellContext`solution, $CellContext`j$$], $CellContext`i + 
-              Subscript[$CellContext`k, $CellContext`max] + 1] 
-            Cos[$CellContext`i $CellContext`x], {$CellContext`i, 0, 
-             Subscript[$CellContext`k, $CellContext`max]}]]; Plot[
-         ReplaceAll[$CellContext`u, $CellContext`x -> $CellContext`y], \
-{$CellContext`y, 0, 2 Pi}, PlotRange -> {{0, 2 Pi}, {-0.3, 0.3}}]), 
-      "Specifications" :> {{$CellContext`j$$, 1, 100, 1}}, "Options" :> {}, 
-      "DefaultOptions" :> {}],
-     ImageSizeCache->{625., {137.134033203125, 142.865966796875}},
-     SingleEvaluation->True],
-    Deinitialization:>None,
-    DynamicModuleValues:>{},
-    SynchronousInitialization->True,
-    UndoTrackedVariables:>{Typeset`show$$, Typeset`bookmarkMode$$},
-    UnsavedVariables:>{Typeset`initDone$$},
-    UntrackedVariables:>{Typeset`size$$}], "Manipulate",
-   Deployed->True,
-   StripOnInput->False],
-  Manipulate`InterpretManipulate[1]]], "Output",
- CellChangeTimes->{{3.8941662077591085`*^9, 3.894166232307023*^9}, {
-  3.894166453028765*^9, 3.894166454383284*^9}, {3.8941665399099426`*^9, 
-  3.8941665421254225`*^9}},
- CellLabel->
-  "Out[155]=",ExpressionUUID->"6f02f171-6353-452e-ab34-d5c6dcd63ded"]
+ TemplateBox[{
+  "Table", "iterb", 
+   "\"Iterator \\!\\(\\*RowBox[{\\\"{\\\", RowBox[{\\\"i\\\", \\\",\\\", \
+\\\"1\\\", \\\",\\\", SubscriptBox[\\\"k\\\", \\\"max\\\"]}], \\\"}\\\"}]\\) \
+does not have appropriate bounds.\"", 2, 1, 1, 18638769169008744167, "Local"},
+  "MessageTemplate"]], "Message", "MSG",
+ CellChangeTimes->{3.8943267086639585`*^9},
+ CellLabel->"",ExpressionUUID->"31cc344f-3917-4395-83de-f720e89eaadc"],
+
+Cell[BoxData[
+ TemplateBox[{
+  "Table", "iterb", 
+   "\"Iterator \\!\\(\\*RowBox[{\\\"{\\\", RowBox[{\\\"i\\\", \\\",\\\", \
+\\\"0\\\", \\\",\\\", SubscriptBox[\\\"k\\\", \\\"max\\\"]}], \\\"}\\\"}]\\) \
+does not have appropriate bounds.\"", 2, 1, 2, 18638769169008744167, "Local"},
+  "MessageTemplate"]], "Message", "MSG",
+ CellChangeTimes->{3.89432670878362*^9},
+ CellLabel->"",ExpressionUUID->"2095afeb-8b37-4860-b3f6-304cc5a98dd5"],
+
+Cell[BoxData[
+ TemplateBox[{
+  "Table", "iterb", 
+   "\"Iterator \\!\\(\\*RowBox[{\\\"{\\\", RowBox[{\\\"i\\\", \\\",\\\", \
+\\\"0\\\", \\\",\\\", SubscriptBox[\\\"k\\\", \\\"max\\\"]}], \\\"}\\\"}]\\) \
+does not have appropriate bounds.\"", 2, 1, 3, 18638769169008744167, "Local"},
+  "MessageTemplate"]], "Message", "MSG",
+ CellChangeTimes->{3.8943267094208083`*^9},
+ CellLabel->"",ExpressionUUID->"b29c72e7-b6ab-4a06-8869-b4c3f4441fb3"],
+
+Cell[BoxData[
+ TemplateBox[{
+  "General", "stop", 
+   "\"Further output of \\!\\(\\*StyleBox[RowBox[{\\\"Table\\\", \\\"::\\\", \
+\\\"iterb\\\"}], \\\"MessageName\\\"]\\) will be suppressed during this \
+calculation.\"", 2, 1, 4, 18638769169008744167, "Local"},
+  "MessageTemplate"]], "Message", "MSG",
+ CellChangeTimes->{3.8943267094345827`*^9},
+ CellLabel->"",ExpressionUUID->"becd0fea-ddf8-4526-a1e1-dbbe520ef2d0"]
 }, Open  ]],
 
 Cell[CellGroupData[{
@@ -10954,7 +10946,7 @@ vGojaw==
   "Out[185]=",ExpressionUUID->"386f2982-feb3-4547-b986-24efd92bb6bc"]
 }, Open  ]]
 },
-WindowSize->{960, 472},
+WindowSize->{960, 532},
 WindowMargins->{{-5.5, Automatic}, {Automatic, -5.5}},
 FrontEndVersion->"13.2 for Microsoft Windows (64-bit) (November 18, 2022)",
 StyleDefinitions->"Default.nb",
@@ -10980,15 +10972,18 @@ Cell[1868, 49, 3730, 100, 128, "Input",ExpressionUUID->"a97908f9-b2b4-4ada-9ce6-
 Cell[5601, 151, 4167, 105, 211, "Input",ExpressionUUID->"83c0b648-d2ce-4579-b8ba-0777d0ff07fc"],
 Cell[CellGroupData[{
 Cell[9793, 260, 2181, 61, 67, "Input",ExpressionUUID->"390e8690-6b28-40b9-b797-e5f66835f3bc"],
-Cell[11977, 323, 2406, 46, 299, "Output",ExpressionUUID->"6f02f171-6353-452e-ab34-d5c6dcd63ded"]
+Cell[11977, 323, 438, 8, 28, "Message",ExpressionUUID->"31cc344f-3917-4395-83de-f720e89eaadc"],
+Cell[12418, 333, 435, 8, 28, "Message",ExpressionUUID->"2095afeb-8b37-4860-b3f6-304cc5a98dd5"],
+Cell[12856, 343, 438, 8, 28, "Message",ExpressionUUID->"b29c72e7-b6ab-4a06-8869-b4c3f4441fb3"],
+Cell[13297, 353, 417, 8, 28, "Message",ExpressionUUID->"becd0fea-ddf8-4526-a1e1-dbbe520ef2d0"]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[14420, 374, 1740, 48, 68, "Input",ExpressionUUID->"7aa92f53-6335-44b6-b51d-e4988debb440"],
-Cell[16163, 424, 613278, 10095, 65, "Output",ExpressionUUID->"1859866d-83e9-4c63-8665-cdf01a30bb15"]
+Cell[13751, 366, 1740, 48, 68, "Input",ExpressionUUID->"7aa92f53-6335-44b6-b51d-e4988debb440"],
+Cell[15494, 416, 613278, 10095, 65, "Output",ExpressionUUID->"1859866d-83e9-4c63-8665-cdf01a30bb15"]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[629478, 10524, 532, 14, 28, "Input",ExpressionUUID->"8678f92c-c16e-4926-abe2-2c4ba2e11d84"],
-Cell[630013, 10540, 23922, 413, 219, "Output",ExpressionUUID->"386f2982-feb3-4547-b986-24efd92bb6bc"]
+Cell[628809, 10516, 532, 14, 28, "Input",ExpressionUUID->"8678f92c-c16e-4926-abe2-2c4ba2e11d84"],
+Cell[629344, 10532, 23922, 413, 219, "Output",ExpressionUUID->"386f2982-feb3-4547-b986-24efd92bb6bc"]
 }, Open  ]]
 }
 ]
