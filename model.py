@@ -9,22 +9,24 @@ from keras.models import *
 from layers import FourierLayer
 
 
-def FourierNeuralOperator(input_shape, k_max=16, dim=64, num_layers=4, activation="swish"):
-    inputs = Input(input_shape)
-    x = Dense(2 * dim, activation=activation)(inputs)
+def FourierNeuralOperator(num_params, input_shape, k_max=16, dim=64, num_layers=4, activation="swish"):
+    parameters = Input((num_params,))
+    function = Input(input_shape)
+
+    x = Dense(2 * dim, activation=activation)(function)
     x = Dense(dim)(x)
 
     for i in range(num_layers):
-        x = FourierLayer(k_max=k_max, activation=activation)(x)
+        x = FourierLayer(k_max=k_max, activation=activation)([parameters, x])
 
     x = Dense(input_shape[-1])(x)
 
-    model = Model(inputs=inputs, outputs=x)
-    return model
+    return Model(inputs=(parameters, function), outputs=x)
 
 
 if __name__ == "__main__":
-    model = FourierNeuralOperator(input_shape=(500, 1))
+    model = FourierNeuralOperator(num_params=1, input_shape=(500, 1))
+    model.summary()
 
     # test the model by making it learn the differential operator
     x_train = []
@@ -45,4 +47,8 @@ if __name__ == "__main__":
 
     # train the model
     model.compile(optimizer=tf.optimizers.Adam(learning_rate=1e-4), loss="mse")
-    model.fit(x_train, y_train, epochs=20, batch_size=32, validation_data=(x_test, y_test))
+    model.fit(
+        (np.ones((len(x_train),)), x_train), y_train,
+        epochs=20, batch_size=16,
+        validation_data=((np.ones((len(x_test),)), x_test), y_test)
+    )

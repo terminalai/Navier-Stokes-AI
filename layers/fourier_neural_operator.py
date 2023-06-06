@@ -2,6 +2,7 @@ import tensorflow as tf
 keras = tf.keras
 
 from keras.layers import *
+from keras.models import *
 
 
 class FourierIntegralLayer(Layer):
@@ -16,39 +17,67 @@ class FourierIntegralLayer(Layer):
 
         self.input_dim = 1
         self.output_dim = 1
+        self.num_params = 0
+
+        self.real_mlp = None
+        self.complex_mlp = None
 
     def build(self, input_shape):
+        self.num_params = input_shape[0][1]
+
+        input_shape = input_shape[-1]
         self.input_dim = len(input_shape) - 2  # -1 for channels, -1 for batch dimension
         self.output_dim = input_shape[-1]
 
-        initializer = tf.keras.initializers.RandomNormal(mean=0., stddev=1.)
-        self.kernel = tf.Variable(
-            tf.complex(initializer((self.k_max, self.output_dim, self.output_dim)),
-                       initializer((self.k_max, self.output_dim, self.output_dim))),
-            shape=tf.TensorShape((self.k_max, self.output_dim, self.output_dim)),
-            dtype=tf.complex64
-        )
+        self.real_mlp = Sequential([
+            Dense(
+                10,
+                activation="swish",
+                input_shape=(self.num_params,)
+            ),
+            Dense(self.k_max * self.output_dim * self.output_dim)
+        ])
+
+        self.complex_mlp = Sequential([
+            Dense(
+                10,
+                activation="swish",
+                input_shape=(self.num_params,)
+            ),
+            Dense(self.k_max * self.output_dim * self.output_dim)
+        ])
 
     def call(self, inputs, *args, **kwargs):
-        batch_size = tf.shape(inputs)[0]
-        n = tf.shape(inputs)[1]
+        parameters, f = inputs
 
-        x = tf.cast(inputs, dtype=tf.complex64)
+        # getting shape of inputs
+        batch_size = tf.shape(f)[0]
+        n = tf.shape(f)[1]
+
+        # converting inputs into complex numbers
+        x = tf.cast(f, dtype=tf.complex64)
         x = tf.transpose(x, (0, 2, 1))
 
-        x = tf.signal.fft(x)[:, :, :self.k_max]  # fourier transform
+        # fourier transform
+        x = tf.signal.fft(x)[:, :, :self.k_max]
         x = tf.transpose(x, (0, 2, 1))
+
+        # build kernel
+        real_kernel = tf.reshape(self.real_mlp(parameters), (-1, self.k_max, self.output_dim, self.output_dim))
+        complex_kernel = tf.reshape(self.complex_mlp(parameters), (-1, self.k_max, self.output_dim, self.output_dim))
+        kernel = tf.complex(real_kernel, complex_kernel)
 
         # todo do a legit matmul
         x = tf.linalg.matmul(
-            self.kernel,
+            kernel,
             tf.repeat(tf.expand_dims(x, axis=-1), self.output_dim, axis=-1)
         )  # apply fourier kernel
         x = tf.reduce_sum(x, axis=-1)
 
+        # inverse fourier transform
         x = tf.transpose(x, (0, 2, 1))
         x = tf.concat([x, tf.zeros((batch_size, self.output_dim, n - self.k_max), dtype=tf.complex64)], axis=-1)
-        x = tf.signal.ifft(x)  # inverse fourier transform
+        x = tf.signal.ifft(x)
 
         x = tf.transpose(x, (0, 2, 1))
         return tf.cast(x, dtype=tf.float32)
@@ -62,6 +91,8 @@ class FourierLayer(Layer):
         super().__init__(**kwargs)
 
         self.dim = 1  # the number of dimensions of the problem
+        self.num_params = 0  # the number of non-function parameters in the problem
+
         self.k_max = k_max
 
         self.linear_transform = None  # the linear transform W
@@ -70,11 +101,15 @@ class FourierLayer(Layer):
         self.activation = Activation(activation)
 
     def build(self, input_shape):
+        self.num_params = input_shape[0][1]
+
+        input_shape = input_shape[-1]
         self.dim = len(input_shape) - 2  # -1 for channels, -1 for batch dimension
         self.linear_transform = Dense(input_shape[-1])
         self.fourier_integral_layer = FourierIntegralLayer(k_max=self.k_max)
 
     def call(self, inputs, *args, **kwargs):
+        parameters, f = inputs
         return self.activation(
-            self.linear_transform(inputs) + self.fourier_integral_layer(inputs)
+            self.linear_transform(f) + self.fourier_integral_layer(inputs)
         )
