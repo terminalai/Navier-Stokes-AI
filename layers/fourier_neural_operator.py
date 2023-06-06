@@ -8,6 +8,7 @@ from keras.models import *
 class FourierIntegralLayer(Layer):
     """
     Implements the fourier integral transform, the heart of the fourier neural operator
+    todo: implement 2d and 3d
     """
     def __init__(self, k_max=16, **kwargs):
         super().__init__(**kwargs)
@@ -31,7 +32,7 @@ class FourierIntegralLayer(Layer):
 
         self.real_mlp = Sequential([
             Dense(
-                10,
+                1,
                 activation="swish",
                 input_shape=(self.num_params,)
             ),
@@ -40,7 +41,7 @@ class FourierIntegralLayer(Layer):
 
         self.complex_mlp = Sequential([
             Dense(
-                10,
+                1,
                 activation="swish",
                 input_shape=(self.num_params,)
             ),
