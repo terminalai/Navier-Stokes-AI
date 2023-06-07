@@ -9,11 +9,14 @@ from keras.models import *
 from layers import FourierLayer
 
 
-def FourierNeuralOperator(num_params, input_shape, k_max=16, dim=64, num_layers=4, activation="swish", periodic=False):
+def FourierNeuralOperator(num_params, input_shape,
+                          mlp_hidden_units=32, k_max=16, dim=64, num_layers=4,
+                          activation="swish", periodic=False):
     """
     Implements the fourier neural operator (Li et al. 2021, https://arxiv.org/pdf/2010.08895.pdf)
     :param num_params: The number of constant parameters (e.g. viscosity, density)
     :param input_shape: The shape of the input
+    :param mlp_hidden_units: The number of hidden units used to parameterise the fourier kernel
     :param k_max: The number of modes to use
     :param dim: The number of dimensions to expand to
     :param num_layers: The number of fourier layers to use
@@ -34,10 +37,10 @@ def FourierNeuralOperator(num_params, input_shape, k_max=16, dim=64, num_layers=
 
     # applying fourier layers
     for i in range(num_layers):
-        x = FourierLayer(k_max=k_max, activation=activation)([parameters, x])
+        x = FourierLayer(k_max=k_max, activation=activation, mlp_hidden_units=mlp_hidden_units)([parameters, x])
 
     # projecting back to original dimension
-    x = Dense(256, activation="swish")(x)
+    x = Dense(256, activation=activation)(x)
     x = Dense(input_shape[-1])(x)
 
     if periodic:

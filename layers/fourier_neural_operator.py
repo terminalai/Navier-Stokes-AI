@@ -91,13 +91,14 @@ class FourierLayer(Layer):
     """
     Implements the fourier layer
     """
-    def __init__(self, activation="swish", k_max=16, **kwargs):
+    def __init__(self, activation="swish", k_max=16, mlp_hidden_units=16, **kwargs):
         super().__init__(**kwargs)
 
         self.dim = 1  # the number of dimensions of the problem
         self.num_params = 0  # the number of non-function parameters in the problem
 
-        self.k_max = k_max
+        self.k_max = k_max  # the number of modes to truncate
+        self.mlp_hidden_units = mlp_hidden_units  # the number of hidden units used to parameterise the fourier kernel
 
         self.linear_transform = None  # the linear transform W
         self.fourier_integral_layer = None  # the heart of the fourier neural operator
@@ -110,10 +111,15 @@ class FourierLayer(Layer):
         input_shape = input_shape[-1]
         self.dim = len(input_shape) - 2  # -1 for channels, -1 for batch dimension
         self.linear_transform = Dense(input_shape[-1])
-        self.fourier_integral_layer = FourierIntegralLayer(k_max=self.k_max)
+        self.fourier_integral_layer = FourierIntegralLayer(
+            mlp_hidden_units=self.mlp_hidden_units,
+            k_max=self.k_max,
+            activation=self.activation
+        )
 
     def call(self, inputs, *args, **kwargs):
         parameters, f = inputs
         return self.activation(
-            self.linear_transform(f) + self.fourier_integral_layer(inputs, activation=self.activation)
+            self.linear_transform(f) +
+            self.fourier_integral_layer(inputs)
         )
