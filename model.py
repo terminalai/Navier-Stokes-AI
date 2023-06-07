@@ -37,7 +37,7 @@ def FourierNeuralOperator(num_params, input_shape, k_max=16, dim=64, num_layers=
         x = FourierLayer(k_max=k_max, activation=activation)([parameters, x])
 
     # projecting back to original dimension
-    x = Dense(128, activation="swish")(x)
+    x = Dense(256, activation="swish")(x)
     x = Dense(input_shape[-1])(x)
 
     if periodic:
@@ -47,30 +47,43 @@ def FourierNeuralOperator(num_params, input_shape, k_max=16, dim=64, num_layers=
 
 
 if __name__ == "__main__":
+    import tqdm
+
     model = FourierNeuralOperator(num_params=1, input_shape=(500, 1))
     model.summary()
 
     # test the model by making it learn the differential operator
     x_train = []
+    order_lst = []
     y_train = []
-    for i in range(4096):
-        coefficients = [random.uniform(0, 1) for j in range(10)]
-        y = [sum([coefficients[j] * (x / 500) ** j for j in range(10)]) for x in range(500)]
+    for i in tqdm.trange(16384):
+        coefficients = [random.uniform(-1, 1) / (0.9 * j + 1) for j in range(20)]
+        y = [sum([coefficients[j] * (x / 500) ** j for j in range(20)]) for x in range(500)]
 
-        differentiated_coefficients = [random.uniform(0, 1) * j for j in range(10)]
-        dy_dx = [sum([differentiated_coefficients[j] * (x / 500) ** (j - 1) for j in range(1, 10)]) for x in range(500)]
+        differentiated_coefficients = [coefficients[j] * j for j in range(20)]
+        dy_dx = [sum([differentiated_coefficients[j] * (x / 500) ** (j - 1) for j in range(1, 20)]) for x in range(500)]
+
+        differentiated_coefficients_2 = [differentiated_coefficients[j] * j for j in range(20)]
+        d2y_dx2 = [sum([differentiated_coefficients_2[j] * (x / 500) ** (j - 2) for j in range(2, 20)]) for x in range(500)]
 
         x_train.append(y)
-        y_train.append(dy_dx)
 
-    x_train, y_train = np.array(x_train), np.array(y_train)
-    x_test, y_test = x_train[512*7:], y_train[512*7:]
-    x_train, y_train = x_train[:512*7], y_train[:512*7]
+        order = random.randint(1, 2)
+        order_lst.append(order)
+
+        if order == 1:
+            y_train.append(dy_dx)
+        else:
+            y_train.append(d2y_dx2)
+
+    x_train, order_lst, y_train = np.array(x_train), np.array(order_lst), np.array(y_train)
+    x_test, order_test, y_test = x_train[9 * len(x_train) // 10:], order_lst[9 * len(x_train) // 10:], y_train[9 * len(x_train) // 10:]
+    x_train, order_train, y_train = x_train[:9 * len(x_train) // 10], order_lst[:9 * len(x_train) // 10], y_train[:9 * len(x_train) // 10]
 
     # train the model
     model.compile(optimizer=tf.optimizers.Adam(learning_rate=1e-4), loss="mse")
-    # model.fit(
-    #     (np.ones((len(x_train),)), x_train), y_train,
-    #     epochs=20, batch_size=16,
-    #     validation_data=((np.ones((len(x_test),)), x_test), y_test)
-    # )
+    model.fit(
+        (order_train, x_train), y_train,
+        epochs=20, batch_size=16,
+        validation_data=((order_test, x_test), y_test)
+    )

@@ -10,7 +10,7 @@ class FourierIntegralLayer(Layer):
     Implements the fourier integral transform, the heart of the fourier neural operator
     todo: implement 2d and 3d
     """
-    def __init__(self, k_max=16, **kwargs):
+    def __init__(self, k_max=16, mlp_hidden_units=10, activation="swish", **kwargs):
         super().__init__(**kwargs)
 
         self.k_max = k_max
@@ -23,6 +23,9 @@ class FourierIntegralLayer(Layer):
         self.real_mlp = None
         self.complex_mlp = None
 
+        self.activation = activation
+        self.mlp_hidden_units = mlp_hidden_units
+
     def build(self, input_shape):
         self.num_params = input_shape[0][1]
 
@@ -32,8 +35,8 @@ class FourierIntegralLayer(Layer):
 
         self.real_mlp = Sequential([
             Dense(
-                1,
-                activation="swish",
+                self.mlp_hidden_units,
+                activation=self.activation,
                 input_shape=(self.num_params,)
             ),
             Dense(self.k_max * self.output_dim * self.output_dim)
@@ -41,8 +44,8 @@ class FourierIntegralLayer(Layer):
 
         self.complex_mlp = Sequential([
             Dense(
-                1,
-                activation="swish",
+                self.mlp_hidden_units,
+                activation=self.activation,
                 input_shape=(self.num_params,)
             ),
             Dense(self.k_max * self.output_dim * self.output_dim)
@@ -112,5 +115,5 @@ class FourierLayer(Layer):
     def call(self, inputs, *args, **kwargs):
         parameters, f = inputs
         return self.activation(
-            self.linear_transform(f) + self.fourier_integral_layer(inputs)
+            self.linear_transform(f) + self.fourier_integral_layer(inputs, activation=self.activation)
         )
