@@ -86,12 +86,20 @@ class FourierIntegralLayer(Layer):
 
             # fourier transform
             x = tf.signal.fft2d(x)[:, :, :self.k_max, :self.k_max]
-            x = tf.transpose(x, (0, 3, 1, 2))
 
             # build kernel
             real_kernel = tf.reshape(self.real_mlp(parameters), (-1, self.k_max, self.k_max, self.output_dim, self.output_dim))
             complex_kernel = tf.reshape(self.complex_mlp(parameters), (-1, self.k_max, self.k_max, self.output_dim, self.output_dim))
             kernel = tf.complex(real_kernel, complex_kernel)
+
+            # my excessive knowledge and love of einstein notation is finally useful
+            x = tf.einsum("bxyio,bixy->boxy", kernel, x)
+
+            # inverse fourier transform
+            x = tf.pad(x, tf.constant([[0, 0], [0, 0], [0, n - self.k_max], [0, n - self.k_max]]))
+            x = tf.signal.ifft2d(x)
+
+            x = tf.transpose(x, (0, 2, 3, 1))
 
         return tf.cast(x, dtype=tf.float32)
 
