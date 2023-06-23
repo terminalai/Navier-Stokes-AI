@@ -33,13 +33,14 @@ class FourierIntegralLayer(Layer):
         self.input_dim = len(input_shape) - 2  # -1 for channels, -1 for batch dimension
         self.output_dim = input_shape[-1]
 
+        kernel_dim = self.k_max ** self.input_dim * self.output_dim * self.output_dim
         self.real_mlp = Sequential([
             Dense(
                 self.mlp_hidden_units,
                 activation=self.activation,
                 input_shape=(self.num_params,)
             ),
-            Dense(self.k_max * self.output_dim * self.output_dim)
+            Dense(kernel_dim)
         ])
 
         self.complex_mlp = Sequential([
@@ -48,7 +49,7 @@ class FourierIntegralLayer(Layer):
                 activation=self.activation,
                 input_shape=(self.num_params,)
             ),
-            Dense(self.k_max * self.output_dim * self.output_dim)
+            Dense(kernel_dim)
         ])
 
     def call(self, inputs, *args, **kwargs):
@@ -60,30 +61,38 @@ class FourierIntegralLayer(Layer):
 
         # converting inputs into complex numbers
         x = tf.cast(f, dtype=tf.complex64)
-        x = tf.transpose(x, (0, 2, 1))
 
-        # fourier transform
-        x = tf.signal.fft(x)[:, :, :self.k_max]
-        x = tf.transpose(x, (0, 2, 1))
+        if self.input_dim == 1:
+            x = tf.transpose(x, (0, 2, 1))
 
-        # build kernel
-        real_kernel = tf.reshape(self.real_mlp(parameters), (-1, self.k_max, self.output_dim, self.output_dim))
-        complex_kernel = tf.reshape(self.complex_mlp(parameters), (-1, self.k_max, self.output_dim, self.output_dim))
-        kernel = tf.complex(real_kernel, complex_kernel)
+            # fourier transform
+            x = tf.signal.fft(x)[:, :, :self.k_max]
 
-        # todo do a legit matmul
-        x = tf.linalg.matmul(
-            kernel,
-            tf.repeat(tf.expand_dims(x, axis=-1), self.output_dim, axis=-1)
-        )  # apply fourier kernel
-        x = tf.reduce_sum(x, axis=-1)
+            # build kernel
+            real_kernel = tf.reshape(self.real_mlp(parameters), (-1, self.k_max, self.output_dim, self.output_dim))
+            complex_kernel = tf.reshape(self.complex_mlp(parameters), (-1, self.k_max, self.output_dim, self.output_dim))
+            kernel = tf.complex(real_kernel, complex_kernel)
 
-        # inverse fourier transform
-        x = tf.transpose(x, (0, 2, 1))
-        x = tf.concat([x, tf.zeros((batch_size, self.output_dim, n - self.k_max), dtype=tf.complex64)], axis=-1)
-        x = tf.signal.ifft(x)
+            # my excessive knowledge and love of einstein notation is finally useful
+            x = tf.einsum("bxio,bix->box", kernel, x)
 
-        x = tf.transpose(x, (0, 2, 1))
+            # inverse fourier transform
+            x = tf.concat([x, tf.zeros((batch_size, self.output_dim, n - self.k_max), dtype=tf.complex64)], axis=-1)
+            x = tf.signal.ifft(x)
+
+            x = tf.transpose(x, (0, 2, 1))
+        elif self.input_dim == 2:
+            x = tf.transpose(x, (0, 3, 1, 2))
+
+            # fourier transform
+            x = tf.signal.fft2d(x)[:, :, :self.k_max, :self.k_max]
+            x = tf.transpose(x, (0, 3, 1, 2))
+
+            # build kernel
+            real_kernel = tf.reshape(self.real_mlp(parameters), (-1, self.k_max, self.k_max, self.output_dim, self.output_dim))
+            complex_kernel = tf.reshape(self.complex_mlp(parameters), (-1, self.k_max, self.k_max, self.output_dim, self.output_dim))
+            kernel = tf.complex(real_kernel, complex_kernel)
+
         return tf.cast(x, dtype=tf.float32)
 
 
