@@ -4,14 +4,13 @@ import tensorflow as tf
 keras = tf.keras
 
 from keras.layers import *
-from keras.models import *
 
 from layers import FourierLayer
 
 
 def FourierNeuralOperator(num_params, input_shape,
-                          mlp_hidden_units=32, k_max=16, dim=64, num_layers=4,
-                          activation="swish", periodic=False):
+                          mlp_hidden_units=1, k_max=16, dim=64, num_layers=4,
+                          activation="swish", periodic=False, initial_embedding=False):
     """
     Implements the fourier neural operator (Li et al. 2021, https://arxiv.org/pdf/2010.08895.pdf)
     :param num_params: The number of constant parameters (e.g. viscosity, density)
@@ -22,6 +21,7 @@ def FourierNeuralOperator(num_params, input_shape,
     :param num_layers: The number of fourier layers to use
     :param activation: The activation function to use
     :param periodic: Are the boundary conditions periodic?
+    :param initial_embedding: Should the parameter used be embedded initially?
     :return: Returns the fourier neural operator model
     """
 
@@ -35,6 +35,14 @@ def FourierNeuralOperator(num_params, input_shape,
 
     x = Dense(dim)(x)  # project to higher dimension
 
+    # use or don't use an initial embedding
+    if initial_embedding:
+        x2 = Dense(dim)(parameters)
+        x2 = Dense(dim)(x2)
+        x2 = tf.repeat(tf.expand_dims(x2, axis=1), x.shape[1], axis=1)
+
+        x = x + x2
+
     # applying fourier layers
     for i in range(num_layers):
         x = FourierLayer(k_max=k_max, activation=activation, mlp_hidden_units=mlp_hidden_units)([parameters, x])
@@ -45,8 +53,6 @@ def FourierNeuralOperator(num_params, input_shape,
 
     if periodic:
         x = x[:, :-2]  # remove padding
-
-    return Model(inputs=(parameters, function), outputs=x)
 
 
 if __name__ == "__main__":
