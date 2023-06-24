@@ -87,7 +87,7 @@ class FourierNeuralOperator(Model):
 
         self.function_embedding = Dense(self.dim, name="function_embedding")
 
-        if self.num_params > 0:
+        if self.num_params > 0 and initial_embedding:
             self.parameter_embedding = Sequential(
                 [
                     Dense(self.dim, activation=self.activation),
@@ -178,42 +178,64 @@ class FourierNeuralOperator(Model):
 if __name__ == "__main__":
     from losses import physics_loss
 
-    """
-    # test the model by making it learn the differential operator
-    x_train = []
-    order_lst = []
-    y_train = []
-    for i in tqdm.trange(2 ** 16):
-        coefficients = [random.uniform(-5, 5) / (0.05 * j + 1) for j in range(20)]
-        y = np.polynomial.polynomial.Polynomial(coefficients)(np.arange(-5 / 500, 1.2, 1 / 500))
 
-        x_train.append(y[5:505])
+    def _f(t):
+        return t * t * t * (t * (t * 6 - 15) + 10)
 
-        order = random.randint(1, 5)
-        order_lst.append(order)
 
-        y_train.append(np.diff(y, n=order)[5 - order:500 + 5 - order] * (100 ** (0.5 * order + 1)))
+    def generate_perlin_noise_2d(batch_size, shape, res):
+        delta = (res[0] / shape[0], res[1] / shape[1])
+        d = (shape[0] // res[0], shape[1] // res[1])
+        grid = tf.meshgrid(tf.range(0, res[0], delta[0]),
+                           tf.range(0, res[1], delta[1]), indexing='ij')
+        grid = tf.stack(grid, axis=-1)
+        grid = grid - tf.floor(grid)
+        grid = tf.cast(grid, tf.float32)
 
-    x_train, order_lst, y_train = np.array(x_train), np.array(order_lst), np.array(y_train)
-    x_test, order_test, y_test = x_train[9 * len(x_train) // 10:], \
-        order_lst[9 * len(x_train) // 10:], y_train[9 * len(x_train) // 10:]
-    x_train, order_train, y_train = x_train[:9 * len(x_train) // 10], \
-        order_lst[:9 * len(x_train) // 10], y_train[:9 * len( x_train) // 10]
-    """
+        angles = tf.random.uniform(shape=(batch_size, res[0] + 1, res[1] + 1), maxval=2 * np.pi)
+        gradients = tf.stack((tf.cos(angles), tf.sin(angles)), axis=-1)
 
-    ds = tf.data.Dataset.range(2000).map(lambda x: tf.random.uniform((500, 1)))
+        gradients = tf.repeat(tf.repeat(gradients, repeats=d[0], axis=1), repeats=d[1], axis=2)
+        g00 = gradients[:, :-d[0], :-d[1]]
+        g10 = gradients[:, d[0]:, :-d[1]]
+        g01 = gradients[:, :-d[0], d[1]:]
+        g11 = gradients[:, d[0]:, d[1]:]
+
+        # Ramps
+        n00 = tf.reduce_sum(tf.stack((grid[:, :, 0], grid[:, :, 1]), axis=-1) * g00, axis=3)
+        n10 = tf.reduce_sum(tf.stack((grid[:, :, 0] - 1, grid[:, :, 1]), axis=-1) * g10, axis=3)
+        n01 = tf.reduce_sum(tf.stack((grid[:, :, 0], grid[:, :, 1] - 1), axis=-1) * g01, axis=3)
+        n11 = tf.reduce_sum(tf.stack((grid[:, :, 0] - 1, grid[:, :, 1] - 1), axis=-1) * g11, axis=3)
+
+        # Interpolation
+        t = _f(grid)
+        n0 = n00 * (1 - t[:, :, 0]) + t[:, :, 0] * n10
+        n1 = n01 * (1 - t[:, :, 0]) + t[:, :, 0] * n11
+        return 6.21908435118 * ((1 - t[:, :, 1]) * n0 + t[:, :, 1] * n1)  # for a std dev of 1
+
+
+    ds = tf.data.Dataset.range(256).map(
+        lambda x: (10 ** -tf.random.uniform((64, 1), 0, 3), generate_perlin_noise_2d(64, (512, 1), (32, 1)))
+    )
 
     # build the model
     model = FourierNeuralOperator(
-        num_params=0,
-        input_shape=(500, 1),
-        physics_loss=physics_loss(lambda lst: lst[0] + lst[1] * lst[2] - 0.01 * lst[3], 2, 1 / 500, 0.01)
+        num_params=1,
+        input_shape=(512, 1),
+        periodic=True,
+        physics_loss=physics_loss(
+            lambda params, lst: lst[0] + lst[1] * lst[2] - params[:, 0] * lst[3], 2, 1 / 512, 0.01, num_params=1
+        )
     )
 
     # train the model
-    model.compile(optimizer=tf.optimizers.Adam(learning_rate=1e-4))
-    history = model.fit(
-        ds, epochs=20, batch_size=64
+    lr = tf.keras.optimizers.schedules.ExponentialDecay(
+        initial_learning_rate=4e-3,
+        decay_steps=512,
+        decay_rate=0.85
     )
+
+    model.compile(optimizer=tf.optimizers.Adam(learning_rate=lr))
+    history = model.fit(ds, epochs=100)
 
     model.save_weights("model.h5")

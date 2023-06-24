@@ -27,7 +27,7 @@ class FourierIntegralLayer(Layer):
         self.mlp_hidden_units = mlp_hidden_units
 
     def build(self, input_shape):
-        if not isinstance(input_shape[0], tuple):
+        if not isinstance(input_shape[0], tf.TensorShape):
             self.num_params = 0
         else:
             self.num_params = input_shape[0][1]
@@ -130,7 +130,7 @@ class FourierLayer(Layer):
         self.activation = Activation(activation)
 
     def build(self, input_shape):
-        if not isinstance(input_shape[0], tuple):
+        if not isinstance(input_shape[0], tf.TensorShape):
             self.num_params = 0
         else:
             self.num_params = input_shape[0][1]
