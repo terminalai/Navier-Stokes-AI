@@ -14,7 +14,7 @@ def physics_loss(f, max_order, dx, dt):
     def loss(x, y):
         lst = [(y - x) / dt, x]
         for order in range(1, max_order + 1):
-            y = tf.concat([y[:, :-1], tf.expand_dims(y[:, 0], axis=-1)], axis=-1) - y
+            y = tf.concat([y[:, 1:, :], tf.expand_dims(y[:, 0, :], axis=1)], axis=1) - y
             lst.append(y / dx)
 
         return tf.math.reduce_mean(tf.square(f(lst)))
