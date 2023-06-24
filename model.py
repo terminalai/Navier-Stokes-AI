@@ -9,7 +9,7 @@ from keras.layers import *
 from layers import FourierLayer
 
 
-def FourierNeuralOperator(num_params, input_shape,
+def FourierNeuralOperator2(num_params, input_shape,
                           mlp_hidden_units=1, k_max=16, dim=64, num_layers=4,
                           activation="swish", periodic=False, initial_embedding=False):
     """
@@ -58,9 +58,127 @@ def FourierNeuralOperator(num_params, input_shape,
     return Model(inputs=(parameters, function), outputs=x)
 
 
-if __name__ == "__main__":
-    import tqdm
+class FourierNeuralOperator(Model):
+    def __init__(
+            self,
+            num_params,
+            input_shape,
+            mlp_hidden_units=1,
+            k_max=16,
+            dim=64,
+            num_layers=4,
+            activation="swish",
+            periodic=False,
+            initial_embedding=False,
+            physics_loss=None,
+            *args, **kwargs
+    ):
+        super(FourierNeuralOperator, self).__init__(*args, **kwargs)
 
+        self.num_params = num_params
+        self.mlp_hidden_units = mlp_hidden_units
+        self.k_max = k_max
+        self.dim = dim
+        self.num_layers = num_layers
+        self.activation = activation
+        self.periodic = periodic
+        self.initial_embedding = initial_embedding
+        self.physics_loss = physics_loss
+
+        self.function_embedding = Dense(self.dim, name="function_embedding")
+
+        if self.num_params > 0:
+            self.parameter_embedding = Sequential(
+                [
+                    Dense(self.dim, activation=self.activation),
+                    Dense(self.dim)
+                ], name="parameter_embedding"
+            )
+
+        self.output_projection = Sequential(
+            [
+                Dense(256, activation=self.activation),
+                Dense(input_shape[-1])
+            ], name="output_projection"
+        )
+
+        self.fourier_layers = [
+            FourierLayer(k_max=self.k_max, activation=self.activation, mlp_hidden_units=self.mlp_hidden_units)
+            for _ in range(self.num_layers)
+        ]
+
+        self.physics_loss_tracker = keras.metrics.Mean(name='physics_loss')
+
+    def call(self, inputs, training=None, mask=None):
+        if self.num_params == 0:
+            parameters = None
+            function = inputs
+        else:
+            parameters, function = inputs
+
+        if self.periodic:
+            x = tf.pad(function, [[0, 0], [0, 2], [0, 0]], "CONSTANT")  # pad for non-periodic BCs
+        else:
+            x = function
+
+        x = self.function_embedding(x)  # project to higher dimension
+
+        # you can only have an initial embedding for the parameters if you provide them
+        assert (self.initial_embedding and self.num_params > 0) or not self.initial_embedding
+
+        # use or don't use an initial embedding
+        if self.initial_embedding:
+            x2 = self.parameter_embedding(parameters)
+            x2 = tf.repeat(tf.expand_dims(x2, axis=1), x.shape[1], axis=1)
+
+            x = x + x2
+
+        # applying fourier layers
+        for layer in self.fourier_layers:
+            if parameters is None:
+                x = layer(x)
+            else:
+                x = layer([parameters, x])
+
+        # projecting back to original dimension
+        x = self.output_projection(x)
+
+        if self.periodic:
+            x = x[:, :-2]  # remove padding
+
+        return x
+
+    def train_step(self, data):
+        if self.physics_loss is not None:
+            x = data
+
+            with tf.GradientTape() as tape:
+                y = self(x, training=True)  # Forward pass
+
+                # Compute the loss value
+                # (the loss function is configured in `compile()`)
+                loss = self.physics_loss(x, y)
+
+            # Compute gradients
+            trainable_vars = self.trainable_variables
+            gradients = tape.gradient(loss, trainable_vars)
+
+            # Update weights
+            self.optimizer.apply_gradients(zip(gradients, trainable_vars))
+
+            # Update metrics
+            self.physics_loss_tracker.update_state(loss)
+
+            # Return a dict mapping metric names to current value
+            return {m.name: m.result() for m in self.metrics}
+        else:
+            super().train_step(data)
+
+
+if __name__ == "__main__":
+    from losses import physics_loss
+
+    """
     # test the model by making it learn the differential operator
     x_train = []
     order_lst = []
@@ -81,16 +199,21 @@ if __name__ == "__main__":
         order_lst[9 * len(x_train) // 10:], y_train[9 * len(x_train) // 10:]
     x_train, order_train, y_train = x_train[:9 * len(x_train) // 10], \
         order_lst[:9 * len(x_train) // 10], y_train[:9 * len( x_train) // 10]
+    """
+
+    ds = tf.data.Dataset.range(2000).map(lambda x: tf.random.uniform((500, 1)))
 
     # build the model
-    model = FourierNeuralOperator(num_params=1, input_shape=(500, 1))
-    model.summary()
+    model = FourierNeuralOperator(
+        num_params=0,
+        input_shape=(500, 1),
+        physics_loss=physics_loss(lambda lst: lst[0] + lst[1] * lst[2] - 0.01 * lst[3], 2, 1 / 500, 0.01)
+    )
 
     # train the model
-    model.compile(optimizer=tf.optimizers.Adam(learning_rate=1e-4), loss="mse")
-
+    model.compile(optimizer=tf.optimizers.Adam(learning_rate=1e-4))
     history = model.fit(
-        (order_train, x_train), y_train,
-        epochs=50, batch_size=64,
-        validation_data=((order_test, x_test), y_test)
+        ds, epochs=20, batch_size=64
     )
+
+    model.save_weights("model.h5")

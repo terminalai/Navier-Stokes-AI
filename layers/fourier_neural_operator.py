@@ -27,9 +27,12 @@ class FourierIntegralLayer(Layer):
         self.mlp_hidden_units = mlp_hidden_units
 
     def build(self, input_shape):
-        self.num_params = input_shape[0][1]
+        if not isinstance(input_shape[0], tuple):
+            self.num_params = 0
+        else:
+            self.num_params = input_shape[0][1]
+            input_shape = input_shape[-1]
 
-        input_shape = input_shape[-1]
         self.input_dim = len(input_shape) - 2  # -1 for channels, -1 for batch dimension
         self.output_dim = input_shape[-1]
 
@@ -38,7 +41,7 @@ class FourierIntegralLayer(Layer):
             Dense(
                 self.mlp_hidden_units,
                 activation=self.activation,
-                input_shape=(self.num_params,)
+                input_shape=(max(self.num_params, 1),)
             ),
             Dense(kernel_dim)
         ])
@@ -47,13 +50,17 @@ class FourierIntegralLayer(Layer):
             Dense(
                 self.mlp_hidden_units,
                 activation=self.activation,
-                input_shape=(self.num_params,)
+                input_shape=(max(self.num_params, 1),)
             ),
             Dense(kernel_dim)
         ])
 
     def call(self, inputs, *args, **kwargs):
-        parameters, f = inputs
+        if self.num_params == 0:
+            f = inputs
+            parameters = tf.zeros((tf.shape(f)[0], 1))
+        else:
+            parameters, f = inputs
 
         # getting shape of inputs
         batch_size = tf.shape(f)[0]
@@ -123,9 +130,12 @@ class FourierLayer(Layer):
         self.activation = Activation(activation)
 
     def build(self, input_shape):
-        self.num_params = input_shape[0][1]
+        if not isinstance(input_shape[0], tuple):
+            self.num_params = 0
+        else:
+            self.num_params = input_shape[0][1]
+            input_shape = input_shape[-1]
 
-        input_shape = input_shape[-1]
         self.dim = len(input_shape) - 2  # -1 for channels, -1 for batch dimension
         self.linear_transform = Dense(input_shape[-1])
         self.fourier_integral_layer = FourierIntegralLayer(
@@ -135,7 +145,11 @@ class FourierLayer(Layer):
         )
 
     def call(self, inputs, *args, **kwargs):
-        parameters, f = inputs
+        if self.num_params == 0:
+            f = inputs
+        else:
+            parameters, f = inputs
+
         return self.activation(
             self.linear_transform(f) +
             self.fourier_integral_layer(inputs)
