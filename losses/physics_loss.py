@@ -16,8 +16,6 @@ def physics_loss(f, max_order, dx, dt, num_params=0):
         if num_params > 0:
             params, x = x
 
-        print(x, y)
-
         lst = [(y - x) / dt, y]
         for order in range(1, max_order + 1):
             y = tf.concat([y[:, 1:, :], tf.expand_dims(y[:, 0, :], axis=1)], axis=1) - y

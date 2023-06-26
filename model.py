@@ -9,101 +9,42 @@ from keras.layers import *
 from layers import FourierLayer
 
 
-def FourierNeuralOperator2(num_params, input_shape,
-                          mlp_hidden_units=1, k_max=16, dim=64, num_layers=4,
-                          activation="swish", periodic=False, initial_embedding=False):
-    """
-    Implements the fourier neural operator (Li et al. 2021, https://arxiv.org/pdf/2010.08895.pdf)
-    :param num_params: The number of constant parameters (e.g. viscosity, density)
-    :param input_shape: The shape of the input
-    :param mlp_hidden_units: The number of hidden units used to parameterise the fourier kernel
-    :param k_max: The number of modes to use
-    :param dim: The number of dimensions to expand to
-    :param num_layers: The number of fourier layers to use
-    :param activation: The activation function to use
-    :param periodic: Are the boundary conditions periodic?
-    :param initial_embedding: Should the parameter used be embedded initially?
-    :return: Returns the fourier neural operator model
-    """
-
-    parameters = Input((num_params,), name="parameter_input")
-    function = Input(input_shape, name="function_input")
-
-    if periodic:
-        x = tf.pad(function, [[0, 0], [0, 2], [0, 0]], "CONSTANT")  # pad for non-periodic BCs
-    else:
-        x = function
-
-    x = Dense(dim, name="function_embedding")(x)  # project to higher dimension
-
-    # use or don't use an initial embedding
-    if initial_embedding:
-        x2 = Dense(dim, activation=activation, name="function_embedding_1")(parameters)
-        x2 = Dense(dim, name="function_embedding_2")(x2)
-        x2 = tf.repeat(tf.expand_dims(x2, axis=1), x.shape[1], axis=1)
-
-        x = x + x2
-
-    # applying fourier layers
-    for i in range(num_layers):
-        x = FourierLayer(k_max=k_max, activation=activation, mlp_hidden_units=mlp_hidden_units)([parameters, x])
-
-    # projecting back to original dimension
-    x = Dense(256, activation=activation, name="output_projection_1")(x)
-    x = Dense(input_shape[-1], name="output_projection_2")(x)
-
-    if periodic:
-        x = x[:, :-2]  # remove padding
-
-    return Model(inputs=(parameters, function), outputs=x)
-
-
 class FourierNeuralOperator(Model):
     def __init__(
             self,
             num_params,
             input_shape,
-            mlp_hidden_units=1,
+            num_outputs=-1,
             k_max=16,
             dim=64,
             num_layers=4,
             activation="swish",
             periodic=False,
-            initial_embedding=False,
             physics_loss=None,
             *args, **kwargs
     ):
         super(FourierNeuralOperator, self).__init__(*args, **kwargs)
 
         self.num_params = num_params
-        self.mlp_hidden_units = mlp_hidden_units
         self.k_max = k_max
         self.dim = dim
         self.num_layers = num_layers
+        self.num_outputs = input_shape[-1] if num_outputs < 0 else num_outputs
         self.activation = activation
         self.periodic = periodic
-        self.initial_embedding = initial_embedding
         self.physics_loss = physics_loss
 
         self.function_embedding = Dense(self.dim, name="function_embedding")
 
-        if self.num_params > 0 and initial_embedding:
-            self.parameter_embedding = Sequential(
-                [
-                    Dense(self.dim, activation=self.activation),
-                    Dense(self.dim)
-                ], name="parameter_embedding"
-            )
-
         self.output_projection = Sequential(
             [
                 Dense(256, activation=self.activation),
-                Dense(input_shape[-1])
+                Dense(self.num_outputs)
             ], name="output_projection"
         )
 
         self.fourier_layers = [
-            FourierLayer(k_max=self.k_max, activation=self.activation, mlp_hidden_units=self.mlp_hidden_units)
+            FourierLayer(k_max=self.k_max, activation=self.activation, mlp_hidden_units=1)
             for _ in range(self.num_layers)
         ]
 
@@ -111,7 +52,6 @@ class FourierNeuralOperator(Model):
 
     def call(self, inputs, training=None, mask=None):
         if self.num_params == 0:
-            parameters = None
             function = inputs
         else:
             parameters, function = inputs
@@ -121,24 +61,14 @@ class FourierNeuralOperator(Model):
         else:
             x = function
 
+        if self.num_params > 0:  # add parameters
+            x = tf.concat([x, tf.repeat(tf.expand_dims(parameters, axis=1), tf.shape(x)[1], axis=1)], axis=-1)
+
         x = self.function_embedding(x)  # project to higher dimension
-
-        # you can only have an initial embedding for the parameters if you provide them
-        assert (self.initial_embedding and self.num_params > 0) or not self.initial_embedding
-
-        # use or don't use an initial embedding
-        if self.initial_embedding:
-            x2 = self.parameter_embedding(parameters)
-            x2 = tf.repeat(tf.expand_dims(x2, axis=1), x.shape[1], axis=1)
-
-            x = x + x2
 
         # applying fourier layers
         for layer in self.fourier_layers:
-            if parameters is None:
-                x = layer(x)
-            else:
-                x = layer([parameters, x])
+            x = layer(x)
 
         # projecting back to original dimension
         x = self.output_projection(x)
