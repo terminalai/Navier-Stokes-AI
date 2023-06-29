@@ -18,7 +18,9 @@ class FourierNeuralOperator(Model):
             k_max=16,
             dim=64,
             num_layers=4,
+            mlp_hidden_units=-1,
             activation="swish",
+            size=None,
             periodic=False,
             physics_loss=None,
             *args, **kwargs
@@ -29,10 +31,15 @@ class FourierNeuralOperator(Model):
         self.k_max = k_max
         self.dim = dim
         self.num_layers = num_layers
+        self.mlp_hidden_units = mlp_hidden_units
         self.num_outputs = input_shape[-1] if num_outputs < 0 else num_outputs
         self.activation = activation
+        self.size = size
         self.periodic = periodic
         self.physics_loss = physics_loss
+
+        # checking some input conditions
+        assert size is None or len(input_shape) - 1 == len(size)
 
         self.function_embedding = Dense(self.dim, name="function_embedding")
 
@@ -44,7 +51,7 @@ class FourierNeuralOperator(Model):
         )
 
         self.fourier_layers = [
-            FourierLayer(k_max=self.k_max, activation=self.activation, mlp_hidden_units=1)
+            FourierLayer(k_max=self.k_max, activation=self.activation, mlp_hidden_units=max(self.mlp_hidden_units, 1))
             for _ in range(self.num_layers)
         ]
 
@@ -56,7 +63,7 @@ class FourierNeuralOperator(Model):
         else:
             parameters, function = inputs
 
-        if self.periodic:
+        if not self.periodic:
             x = tf.pad(function, [[0, 0], [0, 2], [0, 0]], "CONSTANT")  # pad for non-periodic BCs
         else:
             x = function
@@ -64,16 +71,33 @@ class FourierNeuralOperator(Model):
         if self.num_params > 0:  # add parameters
             x = tf.concat([x, tf.repeat(tf.expand_dims(parameters, axis=1), tf.shape(x)[1], axis=1)], axis=-1)
 
+        if self.size is not None:  # adding coordinates
+            coordinates = tf.meshgrid(*[tf.range(0, dim, dim/tf.shape(x)[1]) for dim in self.size])
+            coordinates = [
+                tf.repeat(
+                    tf.expand_dims(
+                        tf.expand_dims(
+                            tf.cast(y, dtype=tf.float32), axis=-1
+                        ), axis=0
+                    ), tf.shape(x)[0], axis=0
+                ) for y in coordinates
+            ]
+
+            x = tf.concat([x] + coordinates, axis=-1)
+
         x = self.function_embedding(x)  # project to higher dimension
 
         # applying fourier layers
         for layer in self.fourier_layers:
-            x = layer(x)
+            if self.mlp_hidden_units > 0 and self.num_params > 0:
+                x = layer([parameters, x])
+            else:
+                x = layer(x)
 
         # projecting back to original dimension
         x = self.output_projection(x)
 
-        if self.periodic:
+        if not self.periodic:
             x = x[:, :-2]  # remove padding
 
         return x
@@ -153,6 +177,7 @@ if __name__ == "__main__":
         num_params=1,
         input_shape=(512, 1),
         periodic=True,
+        size=[1],
         physics_loss=physics_loss(
             lambda params, lst: lst[0] + lst[1] * lst[2] - params[:, 0] * lst[3], 2, 1 / 512, 0.01, num_params=1
         )

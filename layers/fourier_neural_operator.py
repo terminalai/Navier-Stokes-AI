@@ -41,7 +41,8 @@ class FourierIntegralLayer(Layer):
             Dense(
                 self.mlp_hidden_units,
                 activation=self.activation,
-                input_shape=(max(self.num_params, 1),)
+                input_shape=(max(self.num_params, 1),),
+                kernel_initializer="zeros"
             ),
             Dense(kernel_dim)
         ])
@@ -50,7 +51,8 @@ class FourierIntegralLayer(Layer):
             Dense(
                 self.mlp_hidden_units,
                 activation=self.activation,
-                input_shape=(max(self.num_params, 1),)
+                input_shape=(max(self.num_params, 1),),
+                kernel_initializer="zeros"
             ),
             Dense(kernel_dim)
         ])
