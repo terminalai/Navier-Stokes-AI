@@ -8,7 +8,6 @@ from keras.models import *
 class FourierIntegralLayer(Layer):
     """
     Implements the fourier integral transform, the heart of the fourier neural operator
-    todo: implement 2d and 3d
     """
     def __init__(self, k_max=16, mlp_hidden_units=10, activation="swish", **kwargs):
         super().__init__(**kwargs)
@@ -156,3 +155,77 @@ class FourierLayer(Layer):
             self.linear_transform(f) +
             self.fourier_integral_layer(inputs)
         )
+
+
+class FactorisedFourierLayer(Layer):
+    """
+    Implements the factorised fourier layer (Tran et al., 2022)
+    """
+    def __init__(self, activation="swish", k_max=16, mlp_hidden_units=16, weight_sharing=False, **kwargs):
+        super().__init__(**kwargs)
+
+        self.dim = 1  # the number of dimensions of the problem
+        self.num_params = 0  # the number of non-function parameters in the problem
+
+        self.k_max = k_max  # the number of modes to truncate
+        self.mlp_hidden_units = mlp_hidden_units  # the number of hidden units used to parameterise the fourier kernel
+
+        self.weight_sharing = weight_sharing  # should the weights of the fourier networks be shared
+
+        self.linear_transform = None  # the linear transform W1
+        self.linear_transform_2 = None  # the linear transform W2
+
+        # the heart of the fourier neural operator
+        self.fourier_integral_layer = None
+        self.fourier_integral_layer_2 = None
+
+        self.activation = activation
+
+    def build(self, input_shape):
+        if not isinstance(input_shape[0], tf.TensorShape):
+            self.num_params = 0
+        else:
+            self.num_params = input_shape[0][1]
+            input_shape = input_shape[-1]
+
+        self.dim = len(input_shape) - 2  # -1 for channels, -1 for batch dimension
+
+        self.linear_transform = Dense(input_shape[-1], activation=self.activation)
+        self.linear_transform_2 = Dense(input_shape[-1], activation=self.activation)
+
+        self.fourier_integral_layer = FourierIntegralLayer(
+            mlp_hidden_units=self.mlp_hidden_units,
+            k_max=self.k_max,
+            activation=self.activation
+        )
+
+        if self.weight_sharing:
+            self.fourier_integral_layer_2 = self.fourier_integral_layer
+        else:
+            self.fourier_integral_layer_2 = FourierIntegralLayer(
+                mlp_hidden_units=self.mlp_hidden_units,
+                k_max=self.k_max,
+                activation=self.activation
+            )
+
+    def call(self, inputs, *args, **kwargs):
+        if self.num_params == 0:
+            x = inputs
+        else:
+            parameters, x = inputs
+
+        if self.dim == 1:
+            x = self.fourier_integral_layer(inputs)
+        elif self.dim == 2:
+            x1 = tf.reshape(x, (-1, x.shape[1] * x.shape[2], x.shape[3]))
+            x1 = self.fourier_integral_layer(x1 if self.num_params == 0 else [parameters, x1])
+
+            x2 = tf.transpose(x, (0, 2, 1, 3))
+            x2 = tf.reshape(x, (-1, x2.shape[1] * x2.shape[2], x2.shape[3]))
+            x2 = self.fourier_integral_layer(x2 if self.num_params == 0 else [parameters, x2])
+
+            x = x1 + x2
+
+        # todo 3d ffno
+
+        return self.linear_transform_2(self.linear_transform(x)) + (inputs if self.num_params == 0 else inputs[-1])

@@ -6,7 +6,7 @@ keras = tf.keras
 from keras.models import *
 from keras.layers import *
 
-from layers import FourierLayer
+from layers import FourierLayer, FactorisedFourierLayer
 
 
 class FourierNeuralOperator(Model):
@@ -20,6 +20,7 @@ class FourierNeuralOperator(Model):
             num_layers=4,
             mlp_hidden_units=-1,
             activation="swish",
+            fourier_layer=FourierLayer,
             size=None,
             periodic=False,
             physics_loss=None,
@@ -51,8 +52,11 @@ class FourierNeuralOperator(Model):
         )
 
         self.fourier_layers = [
-            FourierLayer(k_max=self.k_max, activation=self.activation, mlp_hidden_units=max(self.mlp_hidden_units, 1))
-            for _ in range(self.num_layers)
+            fourier_layer(
+                k_max=self.k_max,
+                activation=self.activation,
+                mlp_hidden_units=max(self.mlp_hidden_units, 1)
+            ) for _ in range(self.num_layers)
         ]
 
         self.physics_loss_tracker = keras.metrics.Mean(name='physics_loss')
