@@ -130,7 +130,7 @@ class FourierNeuralOperator(Model):
             # Return a dict mapping metric names to current value
             return {m.name: m.result() for m in self.metrics}
         else:
-            super().train_step(data)
+            return super().train_step(data)
 
 
 if __name__ == "__main__":

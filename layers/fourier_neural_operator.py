@@ -226,6 +226,4 @@ class FactorisedFourierLayer(Layer):
 
             x = x1 + x2
 
-        # todo 3d ffno
-
         return self.linear_transform_2(self.linear_transform(x)) + (inputs if self.num_params == 0 else inputs[-1])
