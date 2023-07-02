@@ -59,7 +59,8 @@ class FourierNeuralOperator(Model):
             ) for _ in range(self.num_layers)
         ]
 
-        self.physics_loss_tracker = keras.metrics.Mean(name='physics_loss')
+        if physics_loss is not None:
+            self.physics_loss_tracker = keras.metrics.Mean(name='physics_loss')
 
     def call(self, inputs, training=None, mask=None):
         if self.num_params == 0:
