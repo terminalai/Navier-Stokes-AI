@@ -115,7 +115,6 @@ class FourierNeuralOperator(Model):
                 y = self(x, training=True)  # Forward pass
 
                 # Compute the loss value
-                # (the loss function is configured in `compile()`)
                 loss = self.physics_loss(x, y)
 
             # Compute gradients
@@ -132,3 +131,21 @@ class FourierNeuralOperator(Model):
             return {m.name: m.result() for m in self.metrics}
         else:
             return super().train_step(data)
+
+    def test_step(self, data):
+        if self.physics_loss is not None:
+            x = data
+
+            y = self(x, training=False)  # Forward pass
+
+            # Compute the loss value
+            loss = self.physics_loss(x, y)
+
+            # Update metrics
+            self.physics_loss_tracker.update_state(loss)
+
+            # Return a dict mapping metric names to current value
+            return {m.name: m.result() for m in self.metrics}
+        else:
+            return super().train_step(data)
+
