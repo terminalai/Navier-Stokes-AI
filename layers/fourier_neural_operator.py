@@ -104,7 +104,7 @@ class FourierIntegralLayer(Layer):
             x = tf.einsum("bxyio,bixy->boxy", kernel, x)
 
             # inverse fourier transform
-            x = tf.pad(x, tf.constant([[0, 0], [0, 0], [0, n - self.k_max], [0, n - self.k_max]]))
+            x = tf.pad(x, tf.constant([[0, 0], [0, 0], [0, tf.shape(f)[1] - self.k_max], [0, tf.shape(f)[2] - self.k_max]]))
             x = tf.signal.ifft2d(x)
 
             x = tf.transpose(x, (0, 2, 3, 1))
@@ -161,6 +161,7 @@ class FactorisedFourierLayer(Layer):
     """
     Implements the factorised fourier layer (Tran et al., 2022)
     """
+
     def __init__(self, activation="swish", k_max=16, mlp_hidden_units=16, weight_sharing=False, **kwargs):
         super().__init__(**kwargs)
 
@@ -217,13 +218,22 @@ class FactorisedFourierLayer(Layer):
         if self.dim == 1:
             x = self.fourier_integral_layer(inputs)
         elif self.dim == 2:
+            # first dimension
             x1 = tf.reshape(x, (-1, x.shape[1] * x.shape[2], x.shape[3]))
             x1 = self.fourier_integral_layer(x1 if self.num_params == 0 else [parameters, x1])
+            x1 = tf.reshape(x1, (-1, x.shape[1], x.shape[2], x.shape[3]))
 
+            # second dimension
             x2 = tf.transpose(x, (0, 2, 1, 3))
-            x2 = tf.reshape(x, (-1, x2.shape[1] * x2.shape[2], x2.shape[3]))
-            x2 = self.fourier_integral_layer(x2 if self.num_params == 0 else [parameters, x2])
 
+            shape = x2.shape
+            x2 = tf.reshape(x2, (-1, shape[1] * shape[2], shape[3]))
+            x2 = self.fourier_integral_layer(x2 if self.num_params == 0 else [parameters, x2])
+            x2 = tf.reshape(x2, (-1, shape[1], shape[2], shape[3]))
+
+            x2 = tf.transpose(x2, (0, 2, 1, 3))
+
+            # adding them together
             x = x1 + x2
 
         return self.linear_transform_2(self.linear_transform(x)) + (inputs if self.num_params == 0 else inputs[-1])

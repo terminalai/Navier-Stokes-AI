@@ -22,7 +22,7 @@ class FourierNeuralOperator(Model):
             activation="swish",
             fourier_layer=FourierLayer,
             size=None,
-            periodic=False,
+            periodic=[False],
             physics_loss=None,
             *args, **kwargs
     ):
@@ -60,7 +60,7 @@ class FourierNeuralOperator(Model):
         ]
 
         if physics_loss is not None:
-            self.physics_loss_tracker = keras.metrics.Mean(name='physics_loss')
+            self.physics_loss_tracker = tf.keras.metrics.Mean(name='physics_loss')
 
     def call(self, inputs, training=None, mask=None):
         if self.num_params == 0:
@@ -68,16 +68,15 @@ class FourierNeuralOperator(Model):
         else:
             parameters, function = inputs
 
-        if not self.periodic:
-            x = tf.pad(function, [[0, 0], [0, 2], [0, 0]], "CONSTANT")  # pad for non-periodic BCs
-        else:
-            x = function
+        padding = [[0, 0]] + [[0, 10 * (not x)] for x in self.periodic] + [[0, 0]]
+        x = tf.pad(function, padding, "CONSTANT")  # pad for non-periodic BCs
 
         if self.num_params > 0:  # add parameters
             x = tf.concat([x, tf.repeat(tf.expand_dims(parameters, axis=1), tf.shape(x)[1], axis=1)], axis=-1)
 
         if self.size is not None:  # adding coordinates
-            coordinates = tf.meshgrid(*[tf.range(0, dim, dim/tf.shape(x)[1]) for dim in self.size])
+            coordinates = tf.meshgrid(
+                *[tf.range(0, self.size[i], self.size[i] / tf.shape(x)[-i - 2]) for i in range(len(self.size))])
             coordinates = [
                 tf.repeat(
                     tf.expand_dims(
@@ -102,8 +101,12 @@ class FourierNeuralOperator(Model):
         # projecting back to original dimension
         x = self.output_projection(x)
 
-        if not self.periodic:
-            x = x[:, :-2]  # remove padding
+        for i in range(len(self.periodic)):
+            if i == 0 and not self.periodic[i]:
+                x = x[:, :-10]  # remove padding
+
+            if i == 1 and not self.periodic[i]:
+                x = x[:, :, :-10]  # remove padding
 
         return x
 
