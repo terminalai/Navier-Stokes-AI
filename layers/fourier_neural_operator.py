@@ -104,7 +104,7 @@ class FourierIntegralLayer(Layer):
             x = tf.einsum("bxyio,bixy->boxy", kernel, x)
 
             # inverse fourier transform
-            x = tf.pad(x, tf.constant([[0, 0], [0, 0], [0, tf.shape(f)[1] - self.k_max], [0, tf.shape(f)[2] - self.k_max]]))
+            x = tf.pad(x, tf.constant([[0, 0], [0, 0], [0, f.shape[1] - self.k_max], [0, f.shape[2] - self.k_max]]))
             x = tf.signal.ifft2d(x)
 
             x = tf.transpose(x, (0, 2, 3, 1))
