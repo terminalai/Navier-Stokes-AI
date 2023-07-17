@@ -44,4 +44,4 @@ model = FourierNeuralOperator(
 
 model.compile(optimizer="adam")
 
-model.fit(ds, epochs=100, batch_size=64, validation_data=val_ds)
+model.fit(ds, epochs=100, batch_size=1, validation_data=val_ds)

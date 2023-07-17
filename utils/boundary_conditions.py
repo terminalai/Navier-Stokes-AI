@@ -27,7 +27,7 @@ def process_bc(inputs, sizes, bc, y):
     # todo handle BCs for coupled PDEs
     if len(sizes) == 1:  # 1d
         if bc[0] != BoundaryCondition.PERIODIC:
-            temp = tf.ones((tf.shape(y)[0], 1))
+            temp = tf.ones((tf.shape(y)[0], 1, tf.shape(y)[2]))
 
             # computing for left BC
             if bc[0][0] is not None:
@@ -40,7 +40,7 @@ def process_bc(inputs, sizes, bc, y):
                 y = tf.concat([y[:, :-1], right_bc * temp], axis=1)
     elif len(sizes) == 2:  # 2d
         if bc[0] != BoundaryCondition.PERIODIC:
-            temp = tf.ones((tf.shape(y)[0], 1, tf.shape(y)[2]))
+            temp = tf.ones((tf.shape(y)[0], 1, tf.shape(y)[2], tf.shape(y)[3]))
 
             # computing for left BC
             if bc[0][0] is not None:
@@ -53,7 +53,7 @@ def process_bc(inputs, sizes, bc, y):
                 y = tf.concat([y[:, :-1], right_bc * temp], axis=1)
 
         if bc[1] != BoundaryCondition.PERIODIC:
-            temp = tf.ones((tf.shape(y)[0], tf.shape(y)[1], 1))
+            temp = tf.ones((tf.shape(y)[0], tf.shape(y)[1], 1, tf.shape(y)[3]))
 
             # computing for left BC
             if bc[1][0] is not None:

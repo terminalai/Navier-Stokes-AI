@@ -68,13 +68,13 @@ class FourierIntegralLayer(Layer):
         n = tf.shape(f)[1]
 
         # converting inputs into complex numbers
-        x = tf.cast(f, dtype=tf.complex64)
+        x = f  # tf.cast(f, dtype=tf.complex64)
 
         if self.input_dim == 1:
             x = tf.transpose(x, (0, 2, 1))
 
             # fourier transform
-            x = tf.signal.fft(x)[:, :, :self.k_max]
+            x = tf.signal.rfft(x)[:, :, :self.k_max]
 
             # build kernel
             real_kernel = tf.reshape(self.real_mlp(parameters), (-1, self.k_max, self.output_dim, self.output_dim))
@@ -86,14 +86,14 @@ class FourierIntegralLayer(Layer):
 
             # inverse fourier transform
             x = tf.concat([x, tf.zeros((batch_size, self.output_dim, n - self.k_max), dtype=tf.complex64)], axis=-1)
-            x = tf.signal.ifft(x)
+            x = tf.signal.irfft(x)
 
             x = tf.transpose(x, (0, 2, 1))
         elif self.input_dim == 2:
             x = tf.transpose(x, (0, 3, 1, 2))
 
             # fourier transform
-            x = tf.signal.fft2d(x)[:, :, :self.k_max, :self.k_max]
+            x = tf.signal.rfft2d(x)[:, :, :self.k_max, :self.k_max]
 
             # build kernel
             real_kernel = tf.reshape(self.real_mlp(parameters), (-1, self.k_max, self.k_max, self.output_dim, self.output_dim))
@@ -105,7 +105,7 @@ class FourierIntegralLayer(Layer):
 
             # inverse fourier transform
             x = tf.pad(x, tf.constant([[0, 0], [0, 0], [0, f.shape[1] - self.k_max], [0, f.shape[2] - self.k_max]]))
-            x = tf.signal.ifft2d(x)
+            x = tf.signal.irfft2d(x)
 
             x = tf.transpose(x, (0, 2, 3, 1))
 

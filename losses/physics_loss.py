@@ -24,7 +24,7 @@ def physics_loss(f, max_order, sizes, bc, num_params=0):
             lst = [None for _ in range(max_order[0] + 1)]
 
             # boundary condition handling
-            y = process_bc(sizes, bc, y)
+            y = process_bc(inputs, sizes, bc, y)
 
             # actual differentiation
             lst[0] = y
@@ -40,6 +40,9 @@ def physics_loss(f, max_order, sizes, bc, num_params=0):
                     ])
         elif len(max_order) == 2:  # 2d
             lst = [[None for _ in range(max_order[1] + 1)] for _ in range(max_order[0] + 1)]
+
+            # boundary condition handling
+            y = process_bc(inputs, sizes, bc, y)
 
             lst[0][0] = y  # compute 1st row of derivatives first
             for i in range(1, max_order[0] + 1):
