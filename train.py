@@ -7,6 +7,7 @@ from losses import physics_loss
 from models import FourierNeuralOperator
 from utils import BoundaryCondition
 
+r"""
 # loading the data
 data = loadmat(r"C:\Users\jedli\Downloads\burgers_data_R10.mat")
 
@@ -26,6 +27,7 @@ ds = tf.data.Dataset.from_tensor_slices(x_train.astype("float32")).batch(16).map
 val_ds = tf.data.Dataset.from_tensor_slices(x_test.astype("float32")).batch(16).map(
     lambda x: tf.repeat(tf.expand_dims(x[::8192 // 512], axis=1), 100, axis=1)
 )
+"""
 
 # build the model
 model = FourierNeuralOperator(
@@ -44,4 +46,4 @@ model = FourierNeuralOperator(
 
 model.compile(optimizer="adam")
 
-model.fit(ds, epochs=100, batch_size=1, validation_data=val_ds)
+# model.fit(ds, epochs=100, batch_size=1, validation_data=val_ds)

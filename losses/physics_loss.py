@@ -1,8 +1,6 @@
 import tensorflow as tf
 from utils import BoundaryCondition, process_bc
 
-keras = tf.keras
-
 
 def physics_loss(f, max_order, sizes, bc, num_params=0):
     """

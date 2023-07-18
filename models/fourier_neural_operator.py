@@ -1,10 +1,9 @@
 import random
 import numpy as np
 import tensorflow as tf
-keras = tf.keras
 
-from keras.models import *
-from keras.layers import *
+from keras_core.models import *
+from keras_core.layers import *
 
 from layers import FourierLayer, FactorisedFourierLayer
 
