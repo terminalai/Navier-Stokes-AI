@@ -21,7 +21,7 @@ class FourierNeuralOperator(Model):
             activation="swish",
             fourier_layer=FourierLayer,
             size=None,
-            periodic=[False],
+            periodic=(False,),
             physics_loss=None,
             *args, **kwargs
     ):
