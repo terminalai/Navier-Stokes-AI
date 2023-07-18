@@ -1,4 +1,5 @@
 import random
+import keras_core
 import numpy as np
 import tensorflow as tf
 
@@ -59,7 +60,7 @@ class FourierNeuralOperator(Model):
         ]
 
         if physics_loss is not None:
-            self.physics_loss_tracker = tf.keras.metrics.Mean(name='physics_loss')
+            self.physics_loss_tracker = keras_core.metrics.Mean(name='physics_loss')
 
     def call(self, inputs, training=None, mask=None):
         if self.num_params == 0:
