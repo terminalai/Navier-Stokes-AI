@@ -25,48 +25,53 @@ def physics_loss(f, max_order, sizes, bc, num_params=0):
             y = process_bc(inputs, sizes, bc, y)
 
             # actual differentiation
+            dx = sizes[0] / shape[0]
+
             lst[0] = y
             for order in range(1, max_order[0] + 1):
                 y = lst[order - 1]
                 if bc[0] == BoundaryCondition.PERIODIC:
-                    lst[order] = (tf.concat([y[:, 1:], tf.expand_dims(y[:, 0], axis=1)], axis=1) - y) * shape[0]
+                    lst[order] = (tf.concat([y[:, 1:], tf.expand_dims(y[:, 0], axis=1)], axis=1) - y) / dx
                 else:
                     lst[order] = tf.concat([
-                        (y[:, 1:2] - y[:, 0:1]) * shape[0],
-                        (y[:, 2:] - y[:, :-2]) * shape[0] / 2,
-                        (y[:, -2:-1] - y[:, -3:-2]) * shape[0]
+                        (y[:, 1:2] - y[:, 0:1]) / dx,
+                        (y[:, 2:] - y[:, :-2]) / dx / 2,
+                        (y[:, -2:-1] - y[:, -3:-2]) / dx
                     ])
         elif len(max_order) == 2:  # 2d
             lst = [[None for _ in range(max_order[1] + 1)] for _ in range(max_order[0] + 1)]
 
             # boundary condition handling
+            dx = sizes[0] / shape[0]
+
             y = process_bc(inputs, sizes, bc, y)
 
             lst[0][0] = y  # compute 1st row of derivatives first
             for i in range(1, max_order[0] + 1):
                 y = lst[i - 1][0]
                 if bc[0] == BoundaryCondition.PERIODIC:
-                    lst[i][0] = (tf.concat([y[:, 1:], tf.expand_dims(y[:, 0], axis=1)], axis=1) - y) * shape[0]
+                    lst[i][0] = (tf.concat([y[:, 1:], tf.expand_dims(y[:, 0], axis=1)], axis=1) - y) / dx
                 else:
                     lst[i][0] = tf.concat([
-                        (y[:, 1:2] - y[:, 0:1]) * shape[0],
-                        (y[:, 2:] - y[:, :-2]) * shape[0] / 2,
-                        (y[:, -2:-1] - y[:, -3:-2]) * shape[0]
+                        (y[:, 1:2] - y[:, 0:1]) / dx,
+                        (y[:, 2:] - y[:, :-2]) / dx / 2,
+                        (y[:, -2:-1] - y[:, -3:-2]) / dx
                     ], axis=1)
 
                 # lst[i][0] = (tf.concat([y[:, 1:], tf.expand_dims(y[:, 0], axis=1)], axis=1) - y) * shape[0]
 
             # propagate down
+            dy = sizes[1] / shape[1]
             for i in range(max_order[0] + 1):
                 for j in range(1, max_order[1] + 1):
                     y = lst[i][j - 1]
                     if bc[0] == BoundaryCondition.PERIODIC:
-                        lst[i][j] = (tf.concat([y[:, :, 1:], tf.expand_dims(y[:, :, 0], axis=2)], axis=2) - y) * shape[1]
+                        lst[i][j] = (tf.concat([y[:, :, 1:], tf.expand_dims(y[:, :, 0], axis=2)], axis=2) - y) / dy
                     else:
                         lst[i][j] = tf.concat([
-                            (y[:, :, 1:2] - y[:, :, 0:1]) * shape[1],
-                            (y[:, :, 2:] - y[:, :, :-2]) * shape[1] / 2,
-                            (y[:, :, -2:-1] - y[:, :, -3:-2]) * shape[1]
+                            (y[:, :, 1:2] - y[:, :, 0:1]) / dy,
+                            (y[:, :, 2:] - y[:, :, :-2]) / dy / 2,
+                            (y[:, :, -2:-1] - y[:, :, -3:-2]) / dy
                         ], axis=2)
         else:
             raise NotImplementedError("3D or higher physics loss is not yet implemented")
