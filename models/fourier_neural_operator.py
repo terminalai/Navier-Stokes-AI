@@ -3,6 +3,7 @@ import keras_core
 import numpy as np
 import tensorflow as tf
 
+from keras_core import ops
 from keras_core.models import *
 from keras_core.layers import *
 
@@ -69,25 +70,26 @@ class FourierNeuralOperator(Model):
             parameters, function = inputs
 
         padding = [[0, 0]] + [[0, 10 * (not x)] for x in self.periodic] + [[0, 0]]
-        x = tf.pad(function, padding, "CONSTANT")  # pad for non-periodic BCs
+        x = ops.pad(function, padding, "constant")  # pad for non-periodic BCs
 
         if self.num_params > 0:  # add parameters
-            x = tf.concat([x, tf.repeat(tf.expand_dims(parameters, axis=1), tf.shape(x)[1], axis=1)], axis=-1)
+            x = ops.concatenate([x, ops.repeat(ops.expand_dims(parameters, axis=1), ops.shape(x)[1], axis=1)], axis=-1)
 
         if self.size is not None:  # adding coordinates
-            coordinates = tf.meshgrid(
-                *[tf.range(0, self.size[i], self.size[i] / tf.shape(x)[-i - 2]) for i in range(len(self.size))])
+            coordinates = ops.meshgrid(
+                *[ops.arange(0, self.size[i], self.size[i] / ops.shape(x)[-i - 2]) for i in range(len(self.size))]
+            )
             coordinates = [
-                tf.repeat(
-                    tf.expand_dims(
-                        tf.expand_dims(
-                            tf.cast(y, dtype=tf.float32), axis=-1
+                ops.repeat(
+                    ops.expand_dims(
+                        ops.expand_dims(
+                            ops.cast(y, dtype="float32"), axis=-1
                         ), axis=0
-                    ), tf.shape(x)[0], axis=0
+                    ), ops.shape(x)[0], axis=0
                 ) for y in coordinates
             ]
 
-            x = tf.concat([x] + coordinates, axis=-1)
+            x = ops.concatenate([x] + coordinates, axis=-1)
 
         x = self.function_embedding(x)  # project to higher dimension
 
@@ -150,5 +152,5 @@ class FourierNeuralOperator(Model):
             # Return a dict mapping metric names to current value
             return {m.name: m.result() for m in self.metrics}
         else:
-            return super().train_step(data)
+            return super().test_step(data)
 

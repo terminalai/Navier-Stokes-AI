@@ -46,4 +46,6 @@ model = FourierNeuralOperator(
 
 model.compile(optimizer="adam")
 
+model(tf.zeros((8, 100, 512, 1), dtype=tf.float32))
+
 # model.fit(ds, epochs=100, batch_size=1, validation_data=val_ds)

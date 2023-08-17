@@ -1,7 +1,6 @@
-import tensorflow as tf
-
-from keras_core.models import *
+from keras_core import ops
 from keras_core.layers import *
+from keras_core.models import *
 
 
 class DeepONet(Model):
@@ -37,7 +36,7 @@ class DeepONet(Model):
         )
 
         # the bias term in the output
-        self.bias = tf.Variable(tf.zeros(1, dtype=tf.float32))
+        self.bias = self.add_weight(shape=(1,), initializer="zeros")
 
     def call(self, inputs, training=None, mask=None):
         sensors, y = inputs
@@ -45,4 +44,4 @@ class DeepONet(Model):
         a = self.branch(sensors)
         b = self.trunk(y)
 
-        return tf.tensordot(a, b) + self.bias
+        return ops.tensordot(a, b) + self.bias

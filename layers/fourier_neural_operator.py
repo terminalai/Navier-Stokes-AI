@@ -1,5 +1,6 @@
 import tensorflow as tf
 
+from keras_core import ops
 from keras_core.layers import *
 from keras_core.models import *
 
@@ -58,58 +59,58 @@ class FourierIntegralLayer(Layer):
     def call(self, inputs, *args, **kwargs):
         if self.num_params == 0:
             f = inputs
-            parameters = tf.zeros((tf.shape(f)[0], 1))
+            parameters = ops.zeros((ops.shape(f)[0], 1))
         else:
             parameters, f = inputs
 
         # getting shape of inputs
-        batch_size = tf.shape(f)[0]
-        n = tf.shape(f)[1]
+        batch_size = ops.shape(f)[0]
+        n = ops.shape(f)[1]
 
         # converting inputs into complex numbers
         x = tf.cast(f, dtype=tf.complex64)
 
         # todo use rfft instead of complex fft
         if self.input_dim == 1:
-            x = tf.transpose(x, (0, 2, 1))
+            x = ops.transpose(x, (0, 2, 1))
 
             # fourier transform
             x = tf.signal.fft(x)[:, :, :self.k_max]
 
             # build kernel
-            real_kernel = tf.reshape(self.real_mlp(parameters), (-1, self.k_max, self.output_dim, self.output_dim))
-            complex_kernel = tf.reshape(self.complex_mlp(parameters), (-1, self.k_max, self.output_dim, self.output_dim))
+            real_kernel = ops.reshape(self.real_mlp(parameters), (-1, self.k_max, self.output_dim, self.output_dim))
+            complex_kernel = ops.reshape(self.complex_mlp(parameters), (-1, self.k_max, self.output_dim, self.output_dim))
             kernel = tf.complex(real_kernel, complex_kernel)
 
             # my excessive knowledge and love of einstein notation is finally useful
-            x = tf.einsum("bxio,bix->box", kernel, x)
+            x = ops.einsum("bxio,bix->box", kernel, x)
 
             # inverse fourier transform
-            x = tf.concat([x, tf.zeros((batch_size, self.output_dim, n - self.k_max), dtype=tf.complex64)], axis=-1)
+            x = ops.concatenate([x, tf.zeros((batch_size, self.output_dim, n - self.k_max), dtype=tf.complex64)], axis=-1)
             x = tf.signal.ifft(x)
 
-            x = tf.transpose(x, (0, 2, 1))
+            x = ops.transpose(x, (0, 2, 1))
         elif self.input_dim == 2:
-            x = tf.transpose(x, (0, 3, 1, 2))
+            x = ops.transpose(x, (0, 3, 1, 2))
 
             # fourier transform
             x = tf.signal.fft2d(x)[:, :, :self.k_max, :self.k_max]
 
             # build kernel
-            real_kernel = tf.reshape(self.real_mlp(parameters), (-1, self.k_max, self.k_max, self.output_dim, self.output_dim))
-            complex_kernel = tf.reshape(self.complex_mlp(parameters), (-1, self.k_max, self.k_max, self.output_dim, self.output_dim))
+            real_kernel = ops.reshape(self.real_mlp(parameters), (-1, self.k_max, self.k_max, self.output_dim, self.output_dim))
+            complex_kernel = ops.reshape(self.complex_mlp(parameters), (-1, self.k_max, self.k_max, self.output_dim, self.output_dim))
             kernel = tf.complex(real_kernel, complex_kernel)
 
             # my excessive knowledge and love of einstein notation is finally useful
-            x = tf.einsum("bxyio,bixy->boxy", kernel, x)
+            x = ops.einsum("bxyio,bixy->boxy", kernel, x)
 
             # inverse fourier transform
-            x = tf.pad(x, tf.constant([[0, 0], [0, 0], [0, f.shape[1] - self.k_max], [0, f.shape[2] - self.k_max]]))
+            x = ops.pad(x, [[0, 0], [0, 0], [0, f.shape[1] - self.k_max], [0, f.shape[2] - self.k_max]])
             x = tf.signal.ifft2d(x)
 
-            x = tf.transpose(x, (0, 2, 3, 1))
+            x = ops.transpose(x, (0, 2, 3, 1))
 
-        return tf.cast(x, dtype=tf.float32)
+        return ops.cast(x, dtype="float32")
 
 
 class FourierLayer(Layer):
@@ -219,19 +220,19 @@ class FactorisedFourierLayer(Layer):
             x = self.fourier_integral_layer(inputs)
         elif self.dim == 2:
             # first dimension
-            x1 = tf.reshape(x, (-1, x.shape[1] * x.shape[2], x.shape[3]))
+            x1 = ops.reshape(x, (-1, x.shape[1] * x.shape[2], x.shape[3]))
             x1 = self.fourier_integral_layer(x1 if self.num_params == 0 else [parameters, x1])
-            x1 = tf.reshape(x1, (-1, x.shape[1], x.shape[2], x.shape[3]))
+            x1 = ops.reshape(x1, (-1, x.shape[1], x.shape[2], x.shape[3]))
 
             # second dimension
-            x2 = tf.transpose(x, (0, 2, 1, 3))
+            x2 = ops.transpose(x, (0, 2, 1, 3))
 
             shape = x2.shape
-            x2 = tf.reshape(x2, (-1, shape[1] * shape[2], shape[3]))
+            x2 = ops.reshape(x2, (-1, shape[1] * shape[2], shape[3]))
             x2 = self.fourier_integral_layer(x2 if self.num_params == 0 else [parameters, x2])
-            x2 = tf.reshape(x2, (-1, shape[1], shape[2], shape[3]))
+            x2 = ops.reshape(x2, (-1, shape[1], shape[2], shape[3]))
 
-            x2 = tf.transpose(x2, (0, 2, 1, 3))
+            x2 = ops.transpose(x2, (0, 2, 1, 3))
 
             # adding them together
             x = x1 + x2
