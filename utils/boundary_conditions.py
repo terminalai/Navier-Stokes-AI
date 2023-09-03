@@ -11,6 +11,38 @@ class BoundaryCondition(Enum):
     # CAUCHY = 5
 
 
+def process_boundary_condition_1d(bc, values, dx, side=-1):  # spaces are so that pycharm renders the docstirng properly
+    """
+    Computes the boundary conditions and applies them to the input. The input format for boundary conditions is:
+
+    - DIRICHLET, u
+
+    - NEUMANN, u_x
+
+    - PERIODIC
+
+    - ROBIN, k, c -> u + k * u_x = c
+
+    - todo implement CAUCHY
+
+    :param bc: The boundary condition to be applied. The format is as shown above.
+    :param values: The value(s) of the function right next to the boundary.
+    :param dx: The discretion size of this domain.
+    :param side: The side of the domain to apply the boundary condition to. (1 for the right boundary, -1 for the left boundary)
+    :return:
+    """
+
+    # ensure side is either 1 or -1
+    assert side == 1 or side == -1, "parameter side should only be either 1 or -1"
+
+    if bc[0] == BoundaryCondition.DIRICHLET:
+        return bc[1]
+    elif bc[0] == BoundaryCondition.NEUMANN:
+        return side * bc[1] * dx + values
+    elif bc[0] == BoundaryCondition.ROBIN:
+        return (bc[2] + side * values / dx) / (1 + side * bc[1] / dx)
+
+
 def compute_boundary(inputs, bc, size, shape, bc_value, side=-1):
     dx = size / shape
     if bc[0] == BoundaryCondition.DIRICHLET:
