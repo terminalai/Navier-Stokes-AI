@@ -10,7 +10,7 @@ def data_generator(count):
     mu = 0.01
 
     L_x = 1
-    dx = 1 / 1024
+    dx = 1 / 2048
     N_x = int(L_x / dx)
     X = np.linspace(0, L_x, N_x)
 
@@ -24,7 +24,7 @@ def data_generator(count):
 
     u0 = generate_random_functions(
         num=32,
-        resolution=1024,
+        resolution=2048,
         points=np.array(((0, left_boundary), (1, right_boundary)))
     )
 
@@ -45,3 +45,5 @@ def data_generator(count):
         # yield serialize_example(ic, output[1:])
 
         count += 1
+
+    return 0

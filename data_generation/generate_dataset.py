@@ -1,12 +1,11 @@
 import os
 
-from data_generation.burgers_data import data_generator
-
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 import tensorflow as tf
 
 from multiprocessing import Pool
+from data_generation.burgers_data import data_generator
 
 
 def serialize_example(x1, y1):
@@ -38,7 +37,8 @@ def main():
     num_threads = 2
     for i in range(100):
         p = Pool(num_threads)
-        p.map(data_generator, [x*32+i*32*num_threads for x in range(num_threads)])
+        p.map(data_generator, [x * 32 + i * 32 * num_threads for x in range(num_threads)])
+        p.close()
         p.join()
 
 
