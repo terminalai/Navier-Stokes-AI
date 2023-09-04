@@ -35,11 +35,11 @@ def tf_serialize_example(x, y):
 
 
 def main():
-    num_threads = 12
+    num_threads = 2
     for i in range(100):
         p = Pool(num_threads)
-        p.map(data_generator, [x*64+i*64*12 for x in range(num_threads)])
-        p.close()
+        p.map(data_generator, [x*32+i*32*num_threads for x in range(num_threads)])
+        p.join()
 
 
 if __name__ == "__main__":
