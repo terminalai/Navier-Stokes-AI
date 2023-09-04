@@ -1,0 +1,2 @@
+from data_generation.gaussian_process import generate_random_functions
+from data_generation.method_of_lines import method_of_lines

@@ -6,7 +6,7 @@ from data_generation.gaussian_process import generate_random_functions
 from utils.boundary_conditions import process_boundary_condition_1d, BoundaryCondition
 
 
-def method_of_lines(eqn, u0, L, T, bc, k=30):
+def method_of_lines(eqn, u0, L, T, bc):
     """
     A generic solver for PDEs that can be expressed in the form u_t = f(x, u, u_x, u_xx, ...) using the Method of Lines.
     :param eqn: The function f(u, u_x, u_xx, ...) that describes the PDE.
@@ -14,7 +14,6 @@ def method_of_lines(eqn, u0, L, T, bc, k=30):
     :param L: The size of the domain in which the PDE is being solved.
     :param T: The timesteps for which the solution should be provided.
     :param bc: The boundary conditions of the PDE.
-    :param k: The number of Fourier modes to keep when using periodic boundary conditions.
     :return: Returns the solution to the PDE at the timesteps provided in T.
     """
 
@@ -82,5 +81,8 @@ if __name__ == "__main__":
     import time
 
     start_time = time.time()
-    output = method_of_lines(f, u0[0], L_x, T, bc=((BoundaryCondition.DIRICHLET, 0), (BoundaryCondition.DIRICHLET, 0)))
+    output = method_of_lines(
+        f, u0[0], L_x, T,
+        bc=((BoundaryCondition.DIRICHLET, 0), (BoundaryCondition.DIRICHLET, 0))
+    )
     print(time.time() - start_time)
