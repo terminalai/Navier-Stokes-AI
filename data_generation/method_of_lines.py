@@ -20,8 +20,7 @@ def method_of_lines(eqn, u0, L, T, bc):
     dx = L / len(u0)
 
     def f(u, t):
-        """
-        if bc == "periodic":
+        if bc == BoundaryCondition.PERIODIC:
             # spatial derivative in the Fourier domain
             u_hat = np.fft.fft(u)
             u_hat_x = 1j * k * u_hat
@@ -30,24 +29,23 @@ def method_of_lines(eqn, u0, L, T, bc):
             # switching in the spatial domain
             u_x = np.fft.ifft(u_hat_x)
             u_xx = np.fft.ifft(u_hat_xx)
-        """
+        else:
+            # boundary conditions
+            u[0] = process_boundary_condition_1d(bc[0], u[1], dx, side=-1)
+            u[-1] = process_boundary_condition_1d(bc[1], u[-2], dx, side=1)
 
-        # boundary conditions
-        u[0] = process_boundary_condition_1d(bc[0], u[1], dx, side=-1)
-        u[-1] = process_boundary_condition_1d(bc[1], u[-2], dx, side=1)
+            u_x = np.concatenate([
+                (u[1:2] - u[0:1]) / dx,
+                (u[2:] - u[:-2]) / dx / 2,
+                (u[-2:-1] - u[-3:-2]) / dx
+            ])
+            u_xx = np.concatenate([
+                (u[0:1] - 2 * u[1:2] + u[2:3]) / (dx ** 2),
+                (u[2:] - 2 * u[1:-1] + u[:-2]) / (dx ** 2),
+                (u[-2:-1] - 2 * u[-3:-2] + u[-4:-3]) / (dx ** 2)
+            ])
 
-        u_x = np.concatenate([
-            (u[1:2] - u[0:1]) / dx,
-            (u[2:] - u[:-2]) / dx / 2,
-            (u[-2:-1] - u[-3:-2]) / dx
-        ])
-        u_xx = np.concatenate([
-            (u[0:1] - 2 * u[1:2] + u[2:3]) / (dx ** 2),
-            (u[2:] - 2 * u[1:-1] + u[:-2]) / (dx ** 2),
-            (u[-2:-1] - 2 * u[-3:-2] + u[-4:-3]) / (dx ** 2)
-        ])
-
-        u_t = eqn(u, u_x, u_xx)  # -u * u_x + mu * u_xx
+        u_t = eqn(u, u_x, u_xx)
         u_t[0] = 0
         u_t[-1] = 0
         return u_t.real
