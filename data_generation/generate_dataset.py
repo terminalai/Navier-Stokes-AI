@@ -1,11 +1,12 @@
-import os
+import sys, os
 
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+sys.path.append('/mnt/c/users/jedli/onedrive - nus high school/documents/computing studies/navier_stonks')
 
 import tensorflow as tf
 
 from multiprocessing import Pool
-from data_generation.burgers_data import burgers_data_generator
+from data_generation import burgers_data_generator
 
 
 def serialize_example(x1, y1):
@@ -43,7 +44,6 @@ def main():
             burgers_data_generator,
             [init + x * 32 + i * 32 * num_threads for x in range(num_threads)]
         )
-        p.close()
         p.join()
 
 

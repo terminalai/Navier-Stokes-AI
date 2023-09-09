@@ -2,8 +2,7 @@ import random
 
 import numpy as np
 
-from data_generation import method_of_lines
-from data_generation.gaussian_process import generate_random_functions_with_bc
+from data_generation import method_of_lines, generate_random_functions_with_bc
 from utils import BoundaryCondition
 
 
@@ -16,7 +15,7 @@ def burgers_data_generator(count):
     T = np.linspace(0, 1, int(1 / dt))
 
     # defining the PDE
-    f = lambda u, u_x, u_xx: nu * u_xx - u * u_x
+    f = lambda t, u, u_x, u_xx: nu * u_xx - u * u_x
 
     # defining the boundary conditions
     left_boundary = random.uniform(-1, 1)
@@ -30,7 +29,7 @@ def burgers_data_generator(count):
 
     for ic in u0:
         output = method_of_lines(
-            f, ic, L, T, bc=bc
+            f, ic, L, T, bc=bc, max_order=2
         )
 
         np.save(f"../data/ics/ic_{count}.npy", ic)
@@ -38,6 +37,7 @@ def burgers_data_generator(count):
 
         count += 1
 
+    print(f"Completed {count} - {count+32}")
     return 0
 
 
