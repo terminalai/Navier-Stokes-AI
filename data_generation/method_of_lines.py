@@ -89,32 +89,35 @@ def method_of_lines(eqn, u0, L, T, bc, max_order=2):
 
 
 if __name__ == "__main__":
+    r = 5
+    D = 1
+
     L_x = 1
-    dx = 1/4000
+    dx = 1/1000
     N_x = int(L_x / dx)
     X = np.linspace(0, L_x, N_x)
 
     L_t = 1
-    dt = 0.0001
+    dt = 0.001
     N_t = int(L_t / dt)
     T = np.linspace(0, L_t, N_t)
 
     k = 2 * np.pi * np.fft.fftfreq(N_x, d=dx)
 
     u0 = generate_random_functions_with_bc(
-        num=100, resolution=4000,
-        bc=BoundaryCondition.PERIODIC
-    )
+        num=100, resolution=1000,
+        bc=((BoundaryCondition.NEUMANN, -1), (BoundaryCondition.NEUMANN, 2))
+    ) * 3
 
     # defining the PDE
-    f = lambda t, u, u_x, u_xx, u_xxx: -0.00001**2 * u_xxx - u * u_x
+    f = lambda t, u, u_x, u_xx: r * u * (1 - u) + D * u_xx
 
     import time
 
     start_time = time.time()
     output = method_of_lines(
-        f, np.cos(np.pi * X), L_x, T,
-        bc=BoundaryCondition.PERIODIC,  # ((BoundaryCondition.DIRICHLET, 0), (BoundaryCondition.DIRICHLET, 0)),
-        max_order=3
+        f, u0[0], L_x, T,
+        bc=((BoundaryCondition.NEUMANN, -1), (BoundaryCondition.NEUMANN, 2)),
+        max_order=2
     )
     print(time.time() - start_time)
