@@ -34,28 +34,10 @@ def tf_serialize_example(x, y):
     return tf.reshape(tf_string, ())
 
 
-def main():
-    init = 0
-
-    num_threads = 4
-    for i in range(100):
-        p = Pool(num_threads)
-        p.map(
-            burgers_data_generator,
-            [init + x * 32 + i * 32 * num_threads for x in range(num_threads)]
-        )
-        p.join()
-
-
-if __name__ == "__main__":
-    main()
-
-"""
 serialized_features_dataset = tf.data.Dataset.from_generator(
-    data_generator, output_types=tf.string, output_shapes=()
+    burgers_data_generator, output_types=tf.string, output_shapes=()
 )
 
-filename = f'../dirichlet_0_0.tfrecord'
+filename = f'../neumann.tfrecord'
 writer = tf.data.experimental.TFRecordWriter(filename)
 writer.write(serialized_features_dataset)
-"""
