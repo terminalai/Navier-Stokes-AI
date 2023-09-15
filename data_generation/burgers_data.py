@@ -2,8 +2,9 @@ import random
 
 import numpy as np
 
-from data_generation import method_of_lines, generate_random_functions_with_bc
 from utils import BoundaryCondition
+from data_generation import method_of_lines, generate_random_functions_with_bc
+from data_generation.tfrecord_utils import tf_serialize_example
 
 
 def burgers_data_generator():
@@ -33,7 +34,7 @@ def burgers_data_generator():
                 f, ic, L, T, bc=bc, max_order=2
             )
 
-            yield ic, output[1:]
+            yield tf_serialize_example(ic, output[1:])
 
             # np.save(f"../data/ics/ic_{count}.npy", ic)
             # np.save(f"../data/sol/sol_{count}.npy", output[1:])
