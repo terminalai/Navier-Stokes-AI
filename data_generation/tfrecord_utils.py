@@ -18,6 +18,9 @@ def serialize_example(x1, y1):
 
 
 def tf_serialize_example(x, y):
+    x = x.astype("float32")
+    y = y.astype("float32")
+
     tf_string = tf.py_function(
         serialize_example,
         (x, y),

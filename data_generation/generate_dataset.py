@@ -4,33 +4,27 @@ import sys
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 sys.path.append('/mnt/c/users/jedli/onedrive - nus high school/documents/computing studies/navier_stonks')
 
-import numpy as np
 import tensorflow as tf
 
-from data_generation import burgers_data_generator #, tf_serialize_example
+from utils import BoundaryCondition
+from data_generation import burgers_equation, fisher_kpp_equation, zpk_equation
 
+for equation in ["burgers", "fisher_kpp", "zpk"]:
+    for bc_name in ["periodic", "dirichlet", "neumann"]:
+        print(f"Solving {equation} with boundary condition {bc_name}...")
 
-r"""
-def data_generator():
-    root = r"C:\Users\jedli\Downloads\data"
+        if equation == "burgers": equation_generator = burgers_equation
+        elif equation == "fisher-kpp": equation_generator = fisher_kpp_equation
+        elif equation == "zpk": equation_generator = zpk_equation
 
-    for i in range(1600):
-        try:
-            ic_file = f"{root}/ics/ic_{i}.npy"
-            sol_file = f"{root}/sol/sol_{i}.npy"
-            print(i)
+        if bc_name == "periodic": bc = BoundaryCondition.PERIODIC
+        elif bc_name == "dirichlet": bc = BoundaryCondition.DIRICHLET
+        elif bc_name == "neumann": bc = BoundaryCondition.NEUMANN
 
-            yield tf_serialize_example(
-                np.load(ic_file).astype("float32"),
-                np.load(sol_file).astype("float32")
-            )
-        except Exception as e: print(e)
-"""
+        serialized_features_dataset = tf.data.Dataset.from_generator(
+            lambda: equation_generator(bc), output_types=tf.string, output_shapes=()
+        )
 
-serialized_features_dataset = tf.data.Dataset.from_generator(
-    burgers_data_generator, output_types=tf.string, output_shapes=()
-)
-
-filename = f'../neumann.tfrecord'
-writer = tf.io.TFRecordWriter(filename)
-writer.write(serialized_features_dataset)
+        filename = f'../data/{bc_name}_{equation}.tfrecord'
+        writer = tf.data.experimental.TFRecordWriter(filename)
+        writer.write(serialized_features_dataset)

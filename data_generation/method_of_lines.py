@@ -6,7 +6,7 @@ from data_generation.gaussian_process import generate_random_functions, generate
 from utils.boundary_conditions import process_boundary_condition_1d, BoundaryCondition
 
 
-def method_of_lines(eqn, u0, L, T, bc, max_order=2):
+def method_of_lines(eqn, u0, L, T, bc, k=30, max_order=2):
     """
     A generic solver for PDEs that can be expressed in the form u_t = f(x, u, u_x, u_xx, ...) using the Method of Lines.
     :param eqn: The function f(u, u_x, u_xx, ...) that describes the PDE.

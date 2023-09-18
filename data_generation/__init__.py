@@ -1,4 +1,4 @@
 from data_generation.gaussian_process import generate_random_functions, generate_random_functions_with_bc
 from data_generation.method_of_lines import method_of_lines
-from data_generation.burgers_data import burgers_data_generator
+from data_generation.pde_data_generators import burgers_equation, fisher_kpp_equation, zpk_equation
 from data_generation.tfrecord_utils import serialize_example, tf_serialize_example
