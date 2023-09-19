@@ -16,6 +16,8 @@ def burgers_equation(bc, total=10000):
     count = 0
     while (count := count + 1) < total:
         # defining the PDE
+        if(count%10==0):
+            print(count)
         nu = 0.1
         f = lambda t, u, u_x, u_xx: nu * u_xx - u * u_x
 

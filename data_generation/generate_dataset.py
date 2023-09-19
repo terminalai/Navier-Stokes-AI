@@ -9,7 +9,6 @@ import tensorflow as tf
 
 from utils import BoundaryCondition
 from data_generation import burgers_equation, fisher_kpp_equation, zpk_equation
-
 for equation in ["burgers", "fisher_kpp", "zpk"]:
     for bc_name in ["periodic", "dirichlet"]:
         print(f"Solving {equation} with boundary condition {bc_name}...")
