@@ -1,13 +1,10 @@
-import random
 import keras_core
-import numpy as np
 import tensorflow as tf
-
 from keras_core import ops
-from keras_core.models import *
 from keras_core.layers import *
+from keras_core.models import *
 
-from layers import FourierLayer, FactorisedFourierLayer
+from layers import FourierLayer
 
 
 class FourierNeuralOperator(Model):
@@ -77,7 +74,7 @@ class FourierNeuralOperator(Model):
 
         if self.size is not None:  # adding coordinates
             coordinates = ops.meshgrid(
-                *[ops.arange(0, self.size[i], self.size[i] / ops.shape(x)[-i - 2]) for i in range(len(self.size))]
+                *[ops.arange(0.0, self.size[i], self.size[i] / ops.shape(x)[-i - 2]) for i in range(len(self.size))]
             )
             coordinates = [
                 ops.repeat(
