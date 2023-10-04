@@ -49,13 +49,19 @@ class SIREN(Model):
         if self.use_latent: x, latent = inputs
         else: x = inputs
 
+        num_pts = ops.shape(x)[1]
+
         for i in range(len(self.mlp)):
             # apply dense layer
             x = self.mlp[i](x)
 
             if self.use_latent:
                 # apply modulation from latent
-                x = x + self.latent_mlp[i](latent)
+                x = x + ops.repeat(
+                    ops.expand_dims(
+                        self.latent_mlp[i](latent), axis=1
+                    ), num_pts, axis=1
+                )
 
             # apply activation function
             x = ops.sin(x)
