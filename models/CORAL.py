@@ -1,9 +1,5 @@
-import keras_core
 import keras_core.ops as ops
-
 import tensorflow as tf
-
-from keras_core.layers import *
 from keras_core.models import *
 
 from layers import SIREN
@@ -13,14 +9,17 @@ class CORALAutoencoder(Model):
     def __init__(
         self,
         latent_size,
-        optimizer="adamw",
+        alpha=1e-3,
+        steps=100,
         name=None,
         **kwargs
     ):
         super().__init__(name=name, **kwargs)
 
         self.latent_size = latent_size
-        self.optimizer = keras_core.optimizers.get(optimizer)
+
+        self.alpha = alpha
+        self.steps = steps
 
         self.INR = None
         self.latent = None
@@ -35,18 +34,22 @@ class CORALAutoencoder(Model):
             use_latent=True,
             name="siren",
         )
-        self.latent = tf.Variable(initial_value=ops.zeros((input_shape[0][0], self.latent_size)), dtype=tf.float32)
+        self.latent = tf.Variable(
+            initial_value=ops.zeros((input_shape[0][0], self.latent_size)),
+            dtype=tf.float32,
+            name="latent_code"
+        )
 
     def call(self, inputs, training=False):
         return self.INR(inputs)
 
-    def train_step(self, data):
-        (points, values), _ = data  # split into the positions of the points and their values
+    def encode(self, inputs):
+        points, values = inputs  # split into the positions of the points and their values
         batch_size = ops.shape(points)[0]
 
         # initialise latent
         self.latent.assign(ops.zeros((batch_size, self.latent_size)))
-        for i in range(100):
+        for i in range(self.steps):
             with tf.GradientTape() as tape:
                 y_pred = self((points, self.latent), training=False)
                 loss = ops.mean(ops.square(y_pred - values))
@@ -55,7 +58,12 @@ class CORALAutoencoder(Model):
             gradients = tape.gradient(loss, self.latent)
 
             # update latent code
-            self.latent.assign_add(-0.001 * gradients)   # self.optimizer.apply(gradients, latent)
+            self.latent.assign_add(-self.alpha * gradients)
+
+        return self.latent
+
+    def train_step(self, data):
+        self.encode(data[0])  # getting the latent
 
         (x, y), _ = data  # split into the positions of the points and their values
         with tf.GradientTape() as tape:
@@ -79,25 +87,113 @@ class CORALAutoencoder(Model):
         # Return a dict mapping metric names to current value
         return {m.name: m.result() for m in self.metrics}
 
+    def test_step(self, data):
+        self.encode(data[0])  # getting the latent
+
+        (x, y), _ = data  # split into the positions of the points and their values
+        y_pred = self((x, self.latent), training=False)
+        loss = self.compute_loss(y=y, y_pred=y_pred)
+
+        # Update metrics (includes the metric that tracks the loss)
+        for metric in self.metrics:
+            if metric.name == "loss":
+                metric.update_state(loss)
+            else:
+                metric.update_state(y, y_pred)
+
+        # Return a dict mapping metric names to current value
+        return {m.name: m.result() for m in self.metrics}
+
+
+class CORAL(Model):
+    def __init__(
+        self,
+        latent_model: Model,
+        input_autoencoder: CORALAutoencoder,
+        output_autoencoder: CORALAutoencoder,
+        name=None,
+        **kwargs
+    ):
+        super().__init__(name=name, **kwargs)
+        self.latent_model = latent_model
+
+        self.input_autoencoder = input_autoencoder
+        self.output_autoencoder = output_autoencoder
+
+    def call(self, inputs, training=False, use_latent=False):
+        if not use_latent:
+            latent = self.input_autoencoder.encode(inputs)
+        else:
+            latent = inputs
+
+        new_latent = self.latent_model(latent)
+
+        if not use_latent:
+            output = self.output_autoencoder((inputs[0], new_latent))
+        else:
+            output = new_latent
+
+        return output
+
+    def train_step(self, data):
+        x, y = data  # x is the input latent, y is the output latent
+        with tf.GradientTape() as tape:
+            y_pred = self(x, training=True, use_latent=True)
+            loss = self.compute_loss(y=y, y_pred=y_pred)
+
+        # Compute gradients
+        trainable_vars = self.trainable_variables
+        gradients = tape.gradient(loss, trainable_vars)
+
+        # Update weights
+        self.optimizer.apply(gradients, trainable_vars)
+
+        # Update metrics (includes the metric that tracks the loss)
+        for metric in self.metrics:
+            if metric.name == "loss":
+                metric.update_state(loss)
+            else:
+                metric.update_state(y, y_pred)
+
+        # Return a dict mapping metric names to current value
+        return {m.name: m.result() for m in self.metrics}
+
+    def test_step(self, data):
+        x, y = data  # x is the input latent, y is the output latent
+
+        y_pred = self(x, training=False, use_latent=True)
+        loss = self.compute_loss(y=y, y_pred=y_pred)
+
+        # Update metrics (includes the metric that tracks the loss)
+        for metric in self.metrics:
+            if metric.name == "loss":
+                metric.update_state(loss)
+            else:
+                metric.update_state(y, y_pred)
+
+        # Return a dict mapping metric names to current value
+        return {m.name: m.result() for m in self.metrics}
+
 
 if __name__ == "__main__":
+    import os
+    os.environ["KERAS_BACKEND"] = "tensorflow"
+
     import keras_core
 
     import numpy as np
     from scipy.io import loadmat
 
-    model = SIREN(
-        widths=[256, 256, 256, 256, 256],
-        output_dim=1,
-        use_latent=True
+    model = CORALAutoencoder(
+        latent_size=256,
+        alpha=1e-3,
+        steps=3
     )
-
-    model = CORALAutoencoder(latent_size=256)
     model((tf.random.normal((16, 1024, 1)), tf.random.normal((16, 256))))
     model.summary()
 
     model.compile(
-        optimizer=keras_core.optimizers.AdamW(learning_rate=5e-3), loss="mse"
+        optimizer=keras_core.optimizers.AdamW(learning_rate=1e-3), loss="mse"
     )
 
     data = loadmat("../burgers_data_R10.mat")
@@ -116,4 +212,19 @@ if __name__ == "__main__":
         len(x_train), axis=0
     )
 
-    model.fit((pts_train, x_train), x_train, epochs=100, batch_size=16, validation_data=(x_test, y_test))
+    model.fit((pts_train, x_train), x_train, epochs=50, batch_size=16)
+    model.save_weights("input_encoder.keras.h5")
+
+    model2 = CORALAutoencoder(
+        latent_size=256,
+        alpha=1e-3,
+        steps=3
+    )
+    model2((tf.random.normal((16, 1024, 1)), tf.random.normal((16, 256))))
+    model2.summary()
+
+    model2.compile(
+        optimizer=keras_core.optimizers.AdamW(learning_rate=5e-3), loss="mse"
+    )
+    model2.fit((pts_train, y_train), y_train, epochs=50, batch_size=16)
+    model.save_weights("output_encoder.keras.h5")
