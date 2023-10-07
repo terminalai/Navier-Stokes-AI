@@ -32,6 +32,8 @@ class CORALAutoencoder(Model):
         output_dim = input_shape[1][-1]
 
         self.INR = SIREN(
+            widths=self.widths,
+            omega_0=self.omega_0,
             output_dim=output_dim,
             use_latent=True,
             name="siren",
