@@ -8,7 +8,9 @@ from layers import SIREN
 class CORALAutoencoder(Model):
     def __init__(
         self,
-        latent_size,
+        latent_size=256,
+        widths=(256,) * 5,
+        omega_0=30.0,
         alpha=1e-3,
         steps=100,
         name=None,
@@ -17,6 +19,8 @@ class CORALAutoencoder(Model):
         super().__init__(name=name, **kwargs)
 
         self.latent_size = latent_size
+        self.widths = widths
+        self.omega_0 = omega_0
 
         self.alpha = alpha
         self.steps = steps
@@ -28,8 +32,6 @@ class CORALAutoencoder(Model):
         output_dim = input_shape[1][-1]
 
         self.INR = SIREN(
-            widths=[256] * 5,
-            omega_0=30.0,
             output_dim=output_dim,
             use_latent=True,
             name="siren",
