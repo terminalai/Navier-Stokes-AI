@@ -57,7 +57,7 @@ class SIREN(Model):
 
             if self.use_latent:
                 # apply modulation from latent
-                x = x + ops.repeat(
+                x = x + self.omega_0 * ops.repeat(
                     ops.expand_dims(
                         self.latent_mlp[i](latent), axis=1
                     ), num_pts, axis=1

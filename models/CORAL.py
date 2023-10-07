@@ -40,14 +40,15 @@ class CORALAutoencoder(Model):
         )
         self.latent = tf.Variable(
             initial_value=ops.zeros((input_shape[0][0], self.latent_size)),
+            trainable=True,
             dtype=tf.float32,
             name="latent_code"
         )
 
-    def call(self, inputs, training=False):
-        return self.INR(inputs)
+    def call(self, inputs, training=False, **kwargs):
+        return self.INR(inputs, training=training, **kwargs)
 
-    def encode(self, inputs):
+    def encode(self, inputs, training=False, **kwargs):
         points, values = inputs  # split into the positions of the points and their values
         batch_size = ops.shape(points)[0]
 
@@ -55,7 +56,7 @@ class CORALAutoencoder(Model):
         self.latent.assign(ops.zeros((batch_size, self.latent_size)))
         for i in range(self.steps):
             with tf.GradientTape() as tape:
-                y_pred = self((points, self.latent), training=False)
+                y_pred = self((points, self.latent), training=training, **kwargs)
                 loss = ops.mean(ops.square(y_pred - values))
 
             # compute gradients
@@ -67,21 +68,36 @@ class CORALAutoencoder(Model):
         return self.latent
 
     def train_step(self, data):
-        self.encode(data[0])  # getting the latent
-
         (x, y), _ = data  # split into the positions of the points and their values
+        batch_size = ops.shape(x)[0]
+
+        # initialise latent
+        latent_constant = ops.zeros((batch_size, self.latent_size))
+        self.latent.assign(latent_constant)  # we need a variable to nab the gradients
         with tf.GradientTape() as tape:
-            y_pred = self((x, self.latent), training=True)
+            for i in range(self.steps):
+                with tf.GradientTape() as tape2:  # inner loop for optimising the latent code
+                    y_pred = self((x, self.latent), training=True)
+                    loss = ops.mean(ops.square(y_pred - y))
+
+                # compute gradients
+                gradients = tape2.gradient(loss, self.latent)
+
+                # update latent code
+                self.latent.assign_add(-self.alpha * gradients)
+                latent_constant = latent_constant - self.alpha * gradients
+
+            y_pred = self((x, latent_constant), training=True)
             loss = self.compute_loss(y=y, y_pred=y_pred)
 
-        # Compute gradients
+        # compute gradients
         trainable_vars = self.trainable_variables
         gradients = tape.gradient(loss, trainable_vars)
 
-        # Update weights
+        # update weights
         self.optimizer.apply(gradients, trainable_vars)
 
-        # Update metrics (includes the metric that tracks the loss)
+        # update metrics (includes the metric that tracks the loss)
         for metric in self.metrics:
             if metric.name == "loss":
                 metric.update_state(loss)
